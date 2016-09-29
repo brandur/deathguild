@@ -35,7 +35,7 @@ func TestSongsNeedingID(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(actualSongs))
-	assert.Equal(t, songs[1], actualSongs[0])
+	assert.Equal(t, songs[1].ID, actualSongs[0].ID)
 }
 
 func TestUpdateSong(t *testing.T) {

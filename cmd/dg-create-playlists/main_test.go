@@ -14,6 +14,30 @@ func init() {
 	db = tt.DB
 }
 
+func TestPlaylistsNeedingID(t *testing.T) {
+	txn, err := db.Begin()
+	assert.NoError(t, err)
+	defer func() {
+		err := txn.Rollback()
+		assert.NoError(t, err)
+	}()
+
+	playlists := []*deathguild.Playlist{
+		{Day: time.Now(), SpotifyID: "spotify-id"},
+		{Day: time.Now().Add(30 * 24 * time.Hour)},
+	}
+
+	for _, playlist := range playlists {
+		tt.InsertPlaylist(t, txn, playlist)
+	}
+
+	actualPlaylist, err := playlistsNeedingID(txn, 1000)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(actualPlaylist))
+	assert.Equal(t, playlists[1].ID, actualPlaylist[0].ID)
+}
+
 func TestUpdatePlaylist(t *testing.T) {
 	txn, err := db.Begin()
 	assert.NoError(t, err)

@@ -1,4 +1,4 @@
-# deathguild
+# deathguild [![Build Status](https://travis-ci.org/brandur/deathguild.svg?branch=master)](https://travis-ci.org/brandur/deathguild)
 
 ## Setup
 

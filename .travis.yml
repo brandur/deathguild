@@ -1,0 +1,23 @@
+language: go
+
+go:
+  - 1.6
+
+# magic word to use faster/newer container-based architecture
+sudo: false
+
+before_install:
+  - go get -u github.com/golang/lint/golint
+
+script:
+  - make
+
+notifications:
+  email:
+    on_success: never
+
+services:
+  - postgresql
+
+before_script:
+  - createdb deathguild-test

@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/brandur/deathguild"
@@ -10,6 +11,9 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/zmb3/spotify"
 )
+
+// Format for the names of Death Guild playlists.
+const playlistNameFormat = "Death Guild Playlist - %v"
 
 // Conf contains configuration information for the command. It's extracted from
 // environment variables.
@@ -35,6 +39,7 @@ type Conf struct {
 var client *spotify.Client
 var conf Conf
 var db *sql.DB
+var userID string
 
 func main() {
 	err := envdecode.Decode(&conf)
@@ -49,6 +54,19 @@ func main() {
 
 	client = deathguild.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
+
+	// A user is needed for some API operations, so just cache one for the
+	// whole set of requests.
+	user, err := client.CurrentUser()
+	if err != nil {
+		log.Fatal(err)
+	}
+	userID = user.ID
+
+	playlistMap, err := getPlaylistMap()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for {
 		// Do work in batches so we don't have to keep everything in memory
@@ -68,7 +86,7 @@ func main() {
 		for _, playlist := range playlists {
 			p := playlist
 			tasks = append(tasks, pool.NewTask(func() error {
-				return createPlaylist(p)
+				return createPlaylistWithSongs(playlistMap, p)
 			}))
 		}
 
@@ -81,10 +99,90 @@ func main() {
 	}
 }
 
-func createPlaylist(playlist *deathguild.Playlist) error {
-	log.Printf("Created playlist %v with %v song(s)",
-		playlist.FormattedDay(), len(playlist.Songs))
+func createPlaylist(name string) (spotify.ID, error) {
+	playlist, err := client.CreatePlaylistForUser(userID, name, true)
+	if err != nil {
+		return spotify.ID(""), err
+	}
+
+	log.Printf(`Created playlist: "%v"`, name)
+	return playlist.SimplePlaylist.ID, nil
+}
+
+func createPlaylistWithSongs(playlists map[string]spotify.ID, playlist *deathguild.Playlist) error {
+	name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
+
+	playlistID, ok := playlists[name]
+	if !ok {
+		var err error
+		playlistID, err = createPlaylist(name)
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Printf(`Found cached playlist: "%v" (ID %v)`, name)
+	}
+
+	var songIDs []spotify.ID
+	for _, song := range playlist.Songs {
+		songIDs = append(songIDs, spotify.ID(song.SpotifyID))
+	}
+
+	err := client.ReplacePlaylistTracks(userID, playlistID, songIDs...)
+	if err != nil {
+		return err
+	}
+
+	playlist.SpotifyID = string(playlistID)
+	err = updatePlaylist(playlist)
+	if err != nil {
+		return err
+	}
+
+	log.Printf(`Updated playlist: "%v" (ID %v) with %v song(s)`,
+		name, playlistID, len(playlist.Songs))
 	return nil
+}
+
+// Spotify has an incredibly low pagination limit, so it's much faster to just
+// retrieve all playlists at once and run against them. This is obviously
+// terrible because it guarantees race conditions, but it's better than a
+// multi-hour runtime.
+//
+// Returns a map of playlist names mapped to IDs.
+func getPlaylistMap() (map[string]spotify.ID, error) {
+	playlistMap := make(map[string]spotify.ID)
+
+	// Unfortunately 50 is as high as Spotify will go, meaning that our
+	// pagination is pretty much guaranteed to get degradedly slow ...
+	limit := 50
+	offset := 0
+
+	opts := &spotify.Options{
+		Limit:  &limit,
+		Offset: &offset,
+	}
+
+	for {
+		page, err := client.CurrentUsersPlaylistsOpt(opts)
+		if err != nil {
+			return nil, err
+		}
+
+		// Reached the end of pagination.
+		if len(page.Playlists) == 0 {
+			break
+		}
+
+		for _, playlist := range page.Playlists {
+			playlistMap[playlist.Name] = playlist.ID
+		}
+
+		offset += len(page.Playlists)
+	}
+
+	log.Printf("Cached %v playlist(s)", len(playlistMap))
+	return playlistMap, nil
 }
 
 func playlistsNeedingID(limit int) ([]*deathguild.Playlist, error) {
@@ -92,6 +190,8 @@ func playlistsNeedingID(limit int) ([]*deathguild.Playlist, error) {
 		SELECT id, day
 		FROM playlists
 		WHERE spotify_id IS NULL
+		-- create the most recent first
+		ORDER BY day DESC
 		LIMIT $1`,
 		limit,
 	)
@@ -124,6 +224,7 @@ func playlistsNeedingID(limit int) ([]*deathguild.Playlist, error) {
 					WHERE playlists_id = $1
 					ORDER BY position
 				)
+				-- only select songs that have a known Spotify ID
 				AND spotify_id IS NOT NULL`,
 			playlist.ID,
 		)
@@ -150,4 +251,21 @@ func playlistsNeedingID(limit int) ([]*deathguild.Playlist, error) {
 
 	log.Printf("Found %v playlist(s) needing Spotify IDs", len(playlists))
 	return playlists, nil
+}
+
+func updatePlaylist(playlist *deathguild.Playlist) error {
+	// We want a NULL in this field with we didn't get an ID.
+	var spotifyID *string
+	if playlist.SpotifyID != "" {
+		spotifyID = &playlist.SpotifyID
+	}
+
+	_, err := db.Exec(`
+		UPDATE playlists
+		SET spotify_id = $1
+		WHERE id = $2`,
+		spotifyID,
+		playlist.ID,
+	)
+	return err
 }

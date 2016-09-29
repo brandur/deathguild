@@ -1,13 +1,13 @@
 BEGIN;
 
-DROP TABLE IF EXISTS events CASCADE;
-DROP TABLE IF EXISTS events_songs CASCADE;
+DROP TABLE IF EXISTS playlists CASCADE;
+DROP TABLE IF EXISTS playlists_songs CASCADE;
 DROP TABLE IF EXISTS songs CASCADE;
 
 --
--- events
+-- playlists
 --
-CREATE TABLE events (
+CREATE TABLE playlists (
     id bigserial PRIMARY KEY,
     day date UNIQUE
 );
@@ -26,16 +26,16 @@ ALTER TABLE songs
     UNIQUE (artist, title);
 
 --
--- events_songs
+-- playlists_songs
 --
-CREATE TABLE events_songs (
+CREATE TABLE playlists_songs (
     id bigserial PRIMARY KEY,
-    events_id BIGINT REFERENCES events(id),
+    playlists_id BIGINT REFERENCES playlists(id),
     songs_id BIGINT REFERENCES songs(id)
 );
 
-ALTER TABLE events_songs
-    ADD CONSTRAINT unique_events_songs
-    UNIQUE (events_id, songs_id);
+ALTER TABLE playlists_songs
+    ADD CONSTRAINT unique_playlists_songs
+    UNIQUE (playlists_id, songs_id);
 
 COMMIT;

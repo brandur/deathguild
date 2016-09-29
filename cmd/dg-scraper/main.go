@@ -103,15 +103,15 @@ func handlePlaylist(link PlaylistLink) error {
 	}
 	day := u.Query().Get("date")
 
-	var eventID int
+	var playlistID int
 	err = db.QueryRow(`
 		SELECT id
-		FROM events
+		FROM playlists
 		WHERE day = $1`,
 		day,
-	).Scan(&eventID)
+	).Scan(&playlistID)
 
-	if eventID != 0 {
+	if playlistID != 0 {
 		log.Printf("Playlist %v already handled; skipping", day)
 		return nil
 	}
@@ -128,7 +128,7 @@ func handlePlaylist(link PlaylistLink) error {
 		return err
 	}
 
-	err = upsertEventAndSongs(day, songs)
+	err = upsertPlaylistAndSongs(day, songs)
 	if err != nil {
 		return err
 	}
@@ -141,21 +141,21 @@ func handlePlaylist(link PlaylistLink) error {
 	return nil
 }
 
-func upsertEventAndSongs(day string, songs []*Song) error {
+func upsertPlaylistAndSongs(day string, songs []*Song) error {
 	txn, err := db.Begin()
 	if err != nil {
 		return err
 	}
 
-	var eventID int
+	var playlistID int
 	err = txn.QueryRow(`
-		INSERT INTO events (day)
+		INSERT INTO playlists (day)
 		VALUES ($1)
 		ON CONFLICT (day) DO UPDATE
 			SET day = excluded.day
 		RETURNING id`,
 		day,
-	).Scan(&eventID)
+	).Scan(&playlistID)
 	if err != nil {
 		return err
 	}
@@ -176,11 +176,11 @@ func upsertEventAndSongs(day string, songs []*Song) error {
 		}
 
 		_, err = txn.Exec(`
-			INSERT INTO events_songs (events_id, songs_id)
+			INSERT INTO playlists_songs (playlists_id, songs_id)
 			VALUES ($1, $2)
-			ON CONFLICT (events_id, songs_id) DO UPDATE
-				SET events_id = excluded.events_id`,
-			eventID,
+			ON CONFLICT (playlists_id, songs_id) DO UPDATE
+				SET playlists_id = excluded.playlists_id`,
+			playlistID,
 			songID,
 		)
 		if err != nil {

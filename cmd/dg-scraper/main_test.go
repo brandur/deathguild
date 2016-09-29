@@ -56,7 +56,7 @@ func TestScrapePlaylist(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t,
-		&deathguild.Song{"Panic Lift", "The Path"},
+		&deathguild.Song{Artist: "Panic Lift", Title: "The Path"},
 		songs[len(songs)-1],
 	)
 }
@@ -64,8 +64,8 @@ func TestScrapePlaylist(t *testing.T) {
 func TestUpsertPlaylistAndSongs(t *testing.T) {
 	day := "2016-01-01"
 	songs := []*deathguild.Song{
-		{"Depeche Mode", "Two Minute Warning"},
-		{"Imperative Reaction", "You Remain"},
+		{Artist: "Depeche Mode", Title: "Two Minute Warning"},
+		{Artist: "Imperative Reaction", Title: "You Remain"},
 	}
 
 	err := upsertPlaylistAndSongs(day, songs)

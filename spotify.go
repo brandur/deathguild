@@ -7,6 +7,9 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// GetSpotifyClient returns a client that should be immediately useful for
+// use. It takes advantage of the fact that we can just refresh right away to
+// get a valid access token.
 func GetSpotifyClient(clientID, clientSecret, refreshToken string) *spotify.Client {
 	// So as not to introduce a web flow into this program, we cheat a bit here
 	// by just using a refresh token and not an access token (because access

@@ -229,9 +229,9 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 
 	doc.Find("table.Normal tr").EachWithBreak(func(i int, s *goquery.Selection) bool {
 		artist := s.Find("td:nth-child(1)").Text()
-		song := s.Find("td:nth-child(2)").Text()
+		title := s.Find("td:nth-child(2)").Text()
 
-		songs = append(songs, &deathguild.Song{artist, song, ""})
+		songs = append(songs, &deathguild.Song{Artist: artist, Title: title})
 
 		return true
 	})

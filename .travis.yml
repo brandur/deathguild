@@ -16,8 +16,8 @@ notifications:
   email:
     on_success: never
 
-services:
-  - postgresql
+addons:
+  postgresql: "9.5"
 
 before_script:
   - createdb deathguild-test

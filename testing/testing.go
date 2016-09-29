@@ -30,6 +30,11 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	// All tests should be using transactions and roll themselves back, but do
+	// an initial clean on the database anyway to remove anything that may
+	// have accumulated.
+	truncateTestDB(DB)
 }
 
 // InsertPlaylist puts a playlist into the database.
@@ -67,8 +72,8 @@ func InsertSong(t *testing.T, txn *sql.Tx, song *deathguild.Song) {
 	assert.NoError(t, err)
 }
 
-// TruncateTestDB truncates all tables in the testing database.
-func TruncateTestDB(db *sql.DB) {
+// truncateTestDB truncates all tables in the testing database.
+func truncateTestDB(db *sql.DB) {
 	for _, table := range tablesToTruncate {
 		_, err := DB.Exec(`TRUNCATE TABLE ` + table + ` CASCADE`)
 		if err != nil {

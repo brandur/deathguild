@@ -43,8 +43,6 @@ func TestScrapePlaylist(t *testing.T) {
 }
 
 func TestUpsertPlaylistAndSongs(t *testing.T) {
-	tt.TruncateTestDB(db)
-
 	txn, err := db.Begin()
 	assert.NoError(t, err)
 	defer func() {

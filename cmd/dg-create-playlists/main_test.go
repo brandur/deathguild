@@ -15,8 +15,6 @@ func init() {
 }
 
 func TestUpdatePlaylist(t *testing.T) {
-	tt.TruncateTestDB(db)
-
 	txn, err := db.Begin()
 	assert.NoError(t, err)
 	defer func() {

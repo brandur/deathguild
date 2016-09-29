@@ -15,8 +15,6 @@ func init() {
 }
 
 func TestSongsNeedingID(t *testing.T) {
-	tt.TruncateTestDB(db)
-
 	txn, err := db.Begin()
 	assert.NoError(t, err)
 	defer func() {
@@ -41,8 +39,6 @@ func TestSongsNeedingID(t *testing.T) {
 }
 
 func TestUpdateSong(t *testing.T) {
-	tt.TruncateTestDB(db)
-
 	txn, err := db.Begin()
 	assert.NoError(t, err)
 	defer func() {

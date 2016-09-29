@@ -34,8 +34,14 @@ ALTER TABLE songs
 CREATE TABLE playlists_songs (
     id bigserial PRIMARY KEY,
     playlists_id BIGINT NOT NULL REFERENCES playlists(id),
-    songs_id BIGINT NOT NULL REFERENCES songs(id)
+    songs_id BIGINT NOT NULL REFERENCES songs(id),
+    position INT NOT NULL,
+    CHECK (position >= 0)
 );
+
+ALTER TABLE playlists_songs
+    ADD CONSTRAINT unique_playlists_positions
+    UNIQUE (playlists_id, position);
 
 ALTER TABLE playlists_songs
     ADD CONSTRAINT unique_playlists_songs

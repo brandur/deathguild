@@ -181,12 +181,13 @@ func upsertPlaylistAndSongs(day string, songs []*deathguild.Song) error {
 		return err
 	}
 
-	for _, song := range songs {
+	for i, song := range songs {
 		var songID int
 		err := txn.QueryRow(`
 			INSERT INTO songs (artist, title)
 			VALUES ($1, $2)
 			ON CONFLICT (artist, title) DO UPDATE
+				-- no-op
 				SET artist = excluded.artist
 			RETURNING id`,
 			song.Artist,
@@ -197,12 +198,13 @@ func upsertPlaylistAndSongs(day string, songs []*deathguild.Song) error {
 		}
 
 		_, err = txn.Exec(`
-			INSERT INTO playlists_songs (playlists_id, songs_id)
-			VALUES ($1, $2)
+			INSERT INTO playlists_songs (playlists_id, songs_id, position)
+			VALUES ($1, $2, $3)
 			ON CONFLICT (playlists_id, songs_id) DO UPDATE
-				SET playlists_id = excluded.playlists_id`,
+				SET position = excluded.position`,
 			playlistID,
 			songID,
+			i,
 		)
 		if err != nil {
 			return err
@@ -239,5 +241,6 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 		return nil, outErr
 	}
 
+	log.Printf("Found playlist of %v song(s)", len(songs))
 	return songs, nil
 }

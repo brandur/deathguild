@@ -5,6 +5,7 @@
     createdb deathguild
     psql deathguild < db/structure.sql
     go install ./...
+    cp .env.sample .env
     export $(cat .env)
     dg-scraper
 

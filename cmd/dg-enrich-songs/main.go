@@ -55,9 +55,14 @@ func main() {
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	for {
+		txn, err := db.Begin()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		// Do work in batches so we don't have to keep everything in memory
 		// at once.
-		songs, err := songsNeedingID(100)
+		songs, err := songsNeedingID(txn, 100)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -73,7 +78,7 @@ func main() {
 		for _, song := range songs {
 			s := song
 			tasks = append(tasks, pool.NewTask(func() error {
-				return retrieveID(s, &numNotFound)
+				return retrieveID(txn, s, &numNotFound)
 			}))
 		}
 
@@ -81,6 +86,11 @@ func main() {
 			conf.Concurrency)
 		p := pool.NewPool(tasks, conf.Concurrency)
 		p.Run()
+
+		err = txn.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
 			len(songs)-int(numNotFound), numNotFound)
@@ -98,7 +108,7 @@ func artistsToString(artists []spotify.SimpleArtist) string {
 	return out
 }
 
-func retrieveID(song *deathguild.Song, numNotFound *int64) error {
+func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 	searchString := fmt.Sprintf("artist:%v %v",
 		song.Artist, song.Title)
 
@@ -113,7 +123,7 @@ func retrieveID(song *deathguild.Song, numNotFound *int64) error {
 		log.Printf("Song not found: %+v", song)
 		atomic.AddInt64(numNotFound, 1)
 
-		err = updateSong(song)
+		err = updateSong(txn, song)
 		if err != nil {
 			return err
 		}
@@ -130,7 +140,7 @@ func retrieveID(song *deathguild.Song, numNotFound *int64) error {
 
 	song.SpotifyID = string(track.ID)
 
-	err = updateSong(song)
+	err = updateSong(txn, song)
 	if err != nil {
 		return err
 	}
@@ -143,8 +153,8 @@ func retrieveID(song *deathguild.Song, numNotFound *int64) error {
 	return nil
 }
 
-func songsNeedingID(limit int) ([]*deathguild.Song, error) {
-	rows, err := db.Query(`
+func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
+	rows, err := txn.Query(`
 		SELECT id, artist, title
 		FROM songs
 		WHERE spotify_id IS NULL
@@ -179,14 +189,14 @@ func songsNeedingID(limit int) ([]*deathguild.Song, error) {
 	return songs, nil
 }
 
-func updateSong(song *deathguild.Song) error {
+func updateSong(txn *sql.Tx, song *deathguild.Song) error {
 	// We want a NULL in this field with we didn't get an ID.
 	var spotifyID *string
 	if song.SpotifyID != "" {
 		spotifyID = &song.SpotifyID
 	}
 
-	_, err := db.Exec(`
+	_, err := txn.Exec(`
 		UPDATE songs
 		SET spotify_checked_at = $1,
 			spotify_id = $2

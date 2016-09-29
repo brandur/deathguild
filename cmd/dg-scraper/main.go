@@ -124,8 +124,13 @@ func handlePlaylist(link PlaylistLink) error {
 	}
 	day := u.Query().Get("date")
 
+	txn, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
 	var playlistID int
-	err = db.QueryRow(`
+	err = txn.QueryRow(`
 		SELECT id
 		FROM playlists
 		WHERE day = $1`,
@@ -149,7 +154,12 @@ func handlePlaylist(link PlaylistLink) error {
 		return err
 	}
 
-	err = upsertPlaylistAndSongs(day, songs)
+	err = upsertPlaylistAndSongs(txn, day, songs)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Commit()
 	if err != nil {
 		return err
 	}
@@ -162,14 +172,11 @@ func handlePlaylist(link PlaylistLink) error {
 	return nil
 }
 
-func upsertPlaylistAndSongs(day string, songs []*deathguild.Song) error {
-	txn, err := db.Begin()
-	if err != nil {
-		return err
-	}
+func upsertPlaylistAndSongs(txn *sql.Tx, day string,
+	songs []*deathguild.Song) error {
 
 	var playlistID int
-	err = txn.QueryRow(`
+	err := txn.QueryRow(`
 		INSERT INTO playlists (day)
 		VALUES ($1)
 		ON CONFLICT (day) DO UPDATE
@@ -209,11 +216,6 @@ func upsertPlaylistAndSongs(day string, songs []*deathguild.Song) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	err = txn.Commit()
-	if err != nil {
-		return err
 	}
 
 	log.Printf("Inserted records for %v song(s)", len(songs))

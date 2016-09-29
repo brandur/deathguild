@@ -69,9 +69,14 @@ func main() {
 	}
 
 	for {
+		txn, err := db.Begin()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		// Do work in batches so we don't have to keep everything in memory
 		// at once.
-		playlists, err := playlistsNeedingID(100)
+		playlists, err := playlistsNeedingID(txn, 100)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -86,7 +91,7 @@ func main() {
 		for _, playlist := range playlists {
 			p := playlist
 			tasks = append(tasks, pool.NewTask(func() error {
-				return createPlaylistWithSongs(playlistMap, p)
+				return createPlaylistWithSongs(txn, playlistMap, p)
 			}))
 		}
 
@@ -94,6 +99,11 @@ func main() {
 			conf.Concurrency)
 		p := pool.NewPool(tasks, conf.Concurrency)
 		p.Run()
+
+		err = txn.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		log.Printf("Created %v Spotify playlist(s)", len(playlists))
 	}
@@ -109,7 +119,7 @@ func createPlaylist(name string) (spotify.ID, error) {
 	return playlist.SimplePlaylist.ID, nil
 }
 
-func createPlaylistWithSongs(playlistMap map[string]spotify.ID,
+func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 	playlist *deathguild.Playlist) error {
 
 	name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
@@ -136,7 +146,7 @@ func createPlaylistWithSongs(playlistMap map[string]spotify.ID,
 	}
 
 	playlist.SpotifyID = string(playlistID)
-	err = updatePlaylist(playlist)
+	err = updatePlaylist(txn, playlist)
 	if err != nil {
 		return err
 	}
@@ -187,8 +197,8 @@ func getPlaylistMap() (map[string]spotify.ID, error) {
 	return playlistMap, nil
 }
 
-func playlistsNeedingID(limit int) ([]*deathguild.Playlist, error) {
-	rows, err := db.Query(`
+func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) {
+	rows, err := txn.Query(`
 		SELECT id, day
 		FROM playlists
 		WHERE spotify_id IS NULL
@@ -217,7 +227,7 @@ func playlistsNeedingID(limit int) ([]*deathguild.Playlist, error) {
 	}
 
 	for _, playlist := range playlists {
-		rows, err := db.Query(`
+		rows, err := txn.Query(`
 			SELECT id, artist, title, spotify_checked_at, spotify_id
 			FROM songs
 			WHERE id IN (
@@ -255,14 +265,14 @@ func playlistsNeedingID(limit int) ([]*deathguild.Playlist, error) {
 	return playlists, nil
 }
 
-func updatePlaylist(playlist *deathguild.Playlist) error {
+func updatePlaylist(txn *sql.Tx, playlist *deathguild.Playlist) error {
 	// We want a NULL in this field with we didn't get an ID.
 	var spotifyID *string
 	if playlist.SpotifyID != "" {
 		spotifyID = &playlist.SpotifyID
 	}
 
-	_, err := db.Exec(`
+	_, err := txn.Exec(`
 		UPDATE playlists
 		SET spotify_id = $1
 		WHERE id = $2`,

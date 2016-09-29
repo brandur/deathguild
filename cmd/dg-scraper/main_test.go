@@ -43,7 +43,14 @@ func TestScrapePlaylist(t *testing.T) {
 }
 
 func TestUpsertPlaylistAndSongs(t *testing.T) {
-	tt.TruncateTestDB()
+	tt.TruncateTestDB(db)
+
+	txn, err := db.Begin()
+	assert.NoError(t, err)
+	defer func() {
+		err := txn.Rollback()
+		assert.NoError(t, err)
+	}()
 
 	day := "2016-01-01"
 	songs := []*deathguild.Song{
@@ -51,11 +58,11 @@ func TestUpsertPlaylistAndSongs(t *testing.T) {
 		{Artist: "Imperative Reaction", Title: "You Remain"},
 	}
 
-	err := upsertPlaylistAndSongs(day, songs)
+	err = upsertPlaylistAndSongs(txn, day, songs)
 	assert.NoError(t, err)
 
 	var playlistID string
-	err = db.QueryRow(`
+	err = txn.QueryRow(`
 		SELECT id
 		FROM playlists
 		WHERE day = $1`,
@@ -68,7 +75,7 @@ func TestUpsertPlaylistAndSongs(t *testing.T) {
 
 	for _, song := range songs {
 		var songID string
-		err = db.QueryRow(`
+		err = txn.QueryRow(`
 			SELECT id
 			FROM songs
 			WHERE artist = $1 AND title = $2`,
@@ -81,7 +88,7 @@ func TestUpsertPlaylistAndSongs(t *testing.T) {
 		assert.NotEqual(t, 0, songID)
 
 		var playlistSongID string
-		err = db.QueryRow(`
+		err = txn.QueryRow(`
 			SELECT id
 			FROM playlists_songs
 			WHERE playlists_id = $1 AND songs_id = $2`,

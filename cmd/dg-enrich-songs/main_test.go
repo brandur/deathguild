@@ -15,7 +15,14 @@ func init() {
 }
 
 func TestSongsNeedingID(t *testing.T) {
-	tt.TruncateTestDB()
+	tt.TruncateTestDB(db)
+
+	txn, err := db.Begin()
+	assert.NoError(t, err)
+	defer func() {
+		err := txn.Rollback()
+		assert.NoError(t, err)
+	}()
 
 	songs := []*deathguild.Song{
 		{Artist: "Depeche Mode", Title: "Two Minute Warning", SpotifyID: "spotify-id"},
@@ -23,10 +30,10 @@ func TestSongsNeedingID(t *testing.T) {
 	}
 
 	for _, song := range songs {
-		insertSong(t, song)
+		tt.InsertSong(t, txn, song)
 	}
 
-	actualSongs, err := songsNeedingID(1000)
+	actualSongs, err := songsNeedingID(txn, 1000)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(actualSongs))
@@ -34,10 +41,17 @@ func TestSongsNeedingID(t *testing.T) {
 }
 
 func TestUpdateSong(t *testing.T) {
-	tt.TruncateTestDB()
+	tt.TruncateTestDB(db)
+
+	txn, err := db.Begin()
+	assert.NoError(t, err)
+	defer func() {
+		err := txn.Rollback()
+		assert.NoError(t, err)
+	}()
 
 	song := deathguild.Song{Artist: "Panic Lift", Title: "The Path"}
-	insertSong(t, &song)
+	tt.InsertSong(t, txn, &song)
 
 	//
 	// Should update timestamp but without ID if necessary.
@@ -45,13 +59,13 @@ func TestUpdateSong(t *testing.T) {
 
 	song.SpotifyCheckedAt = time.Now()
 
-	err := updateSong(&song)
+	err = updateSong(txn, &song)
 	assert.NoError(t, err)
 
 	var spotifyCheckedAt time.Time
 	var spotifyID sql.NullString
 
-	err = db.QueryRow(`
+	err = txn.QueryRow(`
 		SELECT spotify_checked_at, spotify_id
 		FROM songs
 		WHERE id = $1`,
@@ -69,10 +83,10 @@ func TestUpdateSong(t *testing.T) {
 
 	song.SpotifyID = "spotify-id"
 
-	err = updateSong(&song)
+	err = updateSong(txn, &song)
 	assert.NoError(t, err)
 
-	err = db.QueryRow(`
+	err = txn.QueryRow(`
 		SELECT spotify_checked_at, spotify_id
 		FROM songs
 		WHERE id = $1`,
@@ -81,21 +95,4 @@ func TestUpdateSong(t *testing.T) {
 
 	assert.Equal(t, song.SpotifyCheckedAt.Unix(), spotifyCheckedAt.Unix())
 	assert.Equal(t, "spotify-id", spotifyID.String)
-}
-
-func insertSong(t *testing.T, song *deathguild.Song) {
-	var spotifyID *string
-	if song.SpotifyID != "" {
-		spotifyID = &song.SpotifyID
-	}
-
-	err := db.QueryRow(`
-		INSERT INTO songs (artist, title, spotify_id)
-		VALUES ($1, $2, $3)
-		RETURNING id`,
-		song.Artist,
-		song.Title,
-		spotifyID,
-	).Scan(&song.ID)
-	assert.NoError(t, err)
 }

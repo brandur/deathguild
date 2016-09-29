@@ -231,7 +231,7 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 		artist := s.Find("td:nth-child(1)").Text()
 		song := s.Find("td:nth-child(2)").Text()
 
-		songs = append(songs, &deathguild.Song{artist, song})
+		songs = append(songs, &deathguild.Song{artist, song, ""})
 
 		return true
 	})

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/brandur/deathguild"
@@ -91,9 +90,17 @@ func retrieveIDs(songs []*deathguild.Song) error {
 			return err
 		}
 
+		song.SpotifyCheckedAt = time.Now()
+
 		if len(res.Tracks.Tracks) < 1 {
 			log.Printf("Song not found: %+v", song)
 			songsNotFound = append(songsNotFound, song)
+
+			err = updateSong(song)
+			if err != nil {
+				return err
+			}
+
 			continue
 		}
 
@@ -104,19 +111,12 @@ func retrieveIDs(songs []*deathguild.Song) error {
 			song.Artist, song.Title,
 			artistsToString(track.Artists), track.Name)
 
-		song.SpotifyCheckedAt = time.Now()
 		song.SpotifyID = string(track.ID)
 
 		err = updateSong(song)
 		if err != nil {
 			return err
 		}
-	}
-
-	// set timestamps on all songs not found simultaneously
-	err := updateSongsCheckedAt(songs)
-	if err != nil {
-		return err
 	}
 
 	log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
@@ -163,44 +163,20 @@ func songsNeedingID(limit int) ([]*deathguild.Song, error) {
 }
 
 func updateSong(song *deathguild.Song) error {
+	// We want a NULL in this field with we didn't get an ID.
+	var spotifyID *string
+	if song.SpotifyID != "" {
+		*spotifyID = song.SpotifyID
+	}
+
 	_, err := db.Exec(`
 		UPDATE songs
 		SET spotify_checked_at = $1,
 			spotify_id = $2
 		WHERE id = $3`,
 		song.SpotifyCheckedAt,
-		song.SpotifyID,
+		spotifyID,
 		song.ID,
 	)
-	return err
-}
-
-func updateSongsCheckedAt(songs []*deathguild.Song) error {
-	if len(songs) == 0 {
-		return nil
-	}
-
-	var idString string
-	for i, song := range songs {
-		if i != 0 {
-			idString += ","
-		}
-		idString += strconv.Itoa(song.ID)
-	}
-	idString = "{" + idString + "}"
-
-	// This is fucking terrible, but that's Go for you. Most languages you
-	// could just do an `IN ($1)` with an array and be done with it. Instead
-	// we resort to some fancy array assembly.
-	_, err := db.Exec(`
-		UPDATE songs
-		SET spotify_checked_at = $1
-		WHERE id = any($2::bigint[])`,
-		time.Now(),
-		idString,
-	)
-
-	log.Printf("Updated timestamps on %v song(s)", len(songs))
-
 	return err
 }

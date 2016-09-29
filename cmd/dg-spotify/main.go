@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/brandur/deathguild"
 	"github.com/joeshaw/envdecode"
@@ -46,14 +48,23 @@ func main() {
 	client = deathguild.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
-	songs, err := songsNeedingID()
-	if err != nil {
-		log.Fatal(err)
-	}
+	for {
+		// Do songs in batches so we don't have to keep everything in memory
+		// at once.
+		songs, err := songsNeedingID(100)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	err = retrieveIDs(songs)
-	if err != nil {
-		log.Fatal(err)
+		if len(songs) == 0 {
+			log.Printf("Finished checking for song IDs")
+			break
+		}
+
+		err = retrieveIDs(songs)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -77,7 +88,7 @@ func retrieveIDs(songs []*deathguild.Song) error {
 
 		res, err := client.Search(searchString, spotify.SearchTypeTrack)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		if len(res.Tracks.Tracks) < 1 {
@@ -93,7 +104,19 @@ func retrieveIDs(songs []*deathguild.Song) error {
 			song.Artist, song.Title,
 			artistsToString(track.Artists), track.Name)
 
+		song.SpotifyCheckedAt = time.Now()
 		song.SpotifyID = string(track.ID)
+
+		err = updateSong(song)
+		if err != nil {
+			return err
+		}
+	}
+
+	// set timestamps on all songs not found simultaneously
+	err := updateSongsCheckedAt(songs)
+	if err != nil {
+		return err
 	}
 
 	log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
@@ -102,12 +125,18 @@ func retrieveIDs(songs []*deathguild.Song) error {
 	return nil
 }
 
-func songsNeedingID() ([]*deathguild.Song, error) {
+func songsNeedingID(limit int) ([]*deathguild.Song, error) {
 	rows, err := db.Query(`
-		SELECT artist, title
+		SELECT id, artist, title
 		FROM songs
 		WHERE spotify_id IS NULL
-	`)
+			AND (spotify_checked_at IS NULL
+				-- periodically recheck Spotify for information that we failed
+				-- to fill
+				OR spotify_checked_at < NOW() - '1 month'::interval)
+		LIMIT $1`,
+		limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +147,7 @@ func songsNeedingID() ([]*deathguild.Song, error) {
 	for rows.Next() {
 		var song deathguild.Song
 		err = rows.Scan(
+			&song.ID,
 			&song.Artist,
 			&song.Title,
 		)
@@ -130,4 +160,47 @@ func songsNeedingID() ([]*deathguild.Song, error) {
 	log.Printf("Found %v songs needing Spotify IDs", len(songs))
 
 	return songs, nil
+}
+
+func updateSong(song *deathguild.Song) error {
+	_, err := db.Exec(`
+		UPDATE songs
+		SET spotify_checked_at = $1,
+			spotify_id = $2
+		WHERE id = $3`,
+		song.SpotifyCheckedAt,
+		song.SpotifyID,
+		song.ID,
+	)
+	return err
+}
+
+func updateSongsCheckedAt(songs []*deathguild.Song) error {
+	if len(songs) == 0 {
+		return nil
+	}
+
+	var idString string
+	for i, song := range songs {
+		if i != 0 {
+			idString += ","
+		}
+		idString += strconv.Itoa(song.ID)
+	}
+	idString = "{" + idString + "}"
+
+	// This is fucking terrible, but that's Go for you. Most languages you
+	// could just do an `IN ($1)` with an array and be done with it. Instead
+	// we resort to some fancy array assembly.
+	_, err := db.Exec(`
+		UPDATE songs
+		SET spotify_checked_at = $1
+		WHERE id = any($2::bigint[])`,
+		time.Now(),
+		idString,
+	)
+
+	log.Printf("Updated timestamps on %v song(s)", len(songs))
+
+	return err
 }

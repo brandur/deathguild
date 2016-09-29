@@ -20,6 +20,7 @@ CREATE TABLE songs (
     id bigserial PRIMARY KEY,
     artist TEXT NOT NULL,
     title TEXT NOT NULL,
+    spotify_checked_at TIMESTAMPTZ,
     spotify_id TEXT
 );
 

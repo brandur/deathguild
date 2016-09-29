@@ -3,6 +3,9 @@ package testing
 import (
 	"database/sql"
 
+	// This package provides the general database infrastructure for the other
+	// packages in the project and therefore we pull in pq. This comment is
+	// here to satisfy the Linter.
 	_ "github.com/lib/pq"
 )
 

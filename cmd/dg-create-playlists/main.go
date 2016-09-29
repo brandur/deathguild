@@ -109,10 +109,12 @@ func createPlaylist(name string) (spotify.ID, error) {
 	return playlist.SimplePlaylist.ID, nil
 }
 
-func createPlaylistWithSongs(playlists map[string]spotify.ID, playlist *deathguild.Playlist) error {
+func createPlaylistWithSongs(playlistMap map[string]spotify.ID,
+	playlist *deathguild.Playlist) error {
+
 	name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
 
-	playlistID, ok := playlists[name]
+	playlistID, ok := playlistMap[name]
 	if !ok {
 		var err error
 		playlistID, err = createPlaylist(name)
@@ -120,7 +122,7 @@ func createPlaylistWithSongs(playlists map[string]spotify.ID, playlist *deathgui
 			return err
 		}
 	} else {
-		log.Printf(`Found cached playlist: "%v" (ID %v)`, name)
+		log.Printf(`Found cached playlist: "%v" (ID %v)`, name, playlistID)
 	}
 
 	var songIDs []spotify.ID

@@ -20,4 +20,4 @@ addons:
   postgresql: "9.5"
 
 before_script:
-  - createdb deathguild-test
+  - psql -U postgres -c 'CREATE DATABASE "deathguild-test";'

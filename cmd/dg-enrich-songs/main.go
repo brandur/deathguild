@@ -55,7 +55,7 @@ func main() {
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	for {
-		// Do songs in batches so we don't have to keep everything in memory
+		// Do work in batches so we don't have to keep everything in memory
 		// at once.
 		songs, err := songsNeedingID(100)
 		if err != nil {

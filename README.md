@@ -17,12 +17,10 @@ dg-scraper
 
 # tags songs with their Spotify IDs
 dg-enrich-songs
+
+# creates Spotify playlists mirrors
+dg-create-playlists
 ```
-
-## Architecture
-
-`dg-scraper` -- scrapes the Death Guild website and stores information to Postgres.
-`dg-spotify` -- uses Spotify to enrich database information and create playlists.
 
 ## Vendoring Dependencies
 

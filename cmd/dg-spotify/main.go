@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
+	"sync/atomic"
 	"time"
 
 	"github.com/brandur/deathguild"
+	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 	"github.com/zmb3/spotify"
@@ -20,6 +23,10 @@ type Conf struct {
 
 	// ClientSecret is our Spotify applicaton's client secret.
 	ClientSecret string `env:"CLIENT_SECRET,required"`
+
+	// Concurrency is the number of build Goroutines that will be used to
+	// fetch information over HTTP.
+	Concurrency int `env:"CONCURRENCY,default=5"`
 
 	// DatabaseURL is a connection string for a database used to store playlist
 	// and song information.
@@ -60,10 +67,23 @@ func main() {
 			break
 		}
 
-		err = retrieveIDs(songs)
-		if err != nil {
-			log.Fatal(err)
+		var tasks []*pool.Task
+		var numNotFound int64
+
+		for _, song := range songs {
+			s := song
+			tasks = append(tasks, pool.NewTask(func() error {
+				return retrieveID(s, &numNotFound)
+			}))
 		}
+
+		log.Printf("Using goroutine pool with concurrency %v",
+			conf.Concurrency)
+		p := pool.NewPool(tasks, conf.Concurrency)
+		p.Run()
+
+		log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
+			len(songs)-int(numNotFound), numNotFound)
 	}
 }
 
@@ -78,49 +98,47 @@ func artistsToString(artists []spotify.SimpleArtist) string {
 	return out
 }
 
-func retrieveIDs(songs []*deathguild.Song) error {
-	var songsNotFound []*deathguild.Song
+func retrieveID(song *deathguild.Song, numNotFound *int64) error {
+	searchString := fmt.Sprintf("artist:%v %v",
+		song.Artist, song.Title)
 
-	for _, song := range songs {
-		searchString := fmt.Sprintf("artist:%v %v",
-			song.Artist, song.Title)
+	res, err := client.Search(searchString, spotify.SearchTypeTrack)
+	if err != nil {
+		return err
+	}
 
-		res, err := client.Search(searchString, spotify.SearchTypeTrack)
-		if err != nil {
-			return err
-		}
+	song.SpotifyCheckedAt = time.Now()
 
-		song.SpotifyCheckedAt = time.Now()
-
-		if len(res.Tracks.Tracks) < 1 {
-			log.Printf("Song not found: %+v", song)
-			songsNotFound = append(songsNotFound, song)
-
-			err = updateSong(song)
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		track := res.Tracks.Tracks[0]
-
-		log.Printf("Got track ID: %v (original: %v - %v) (Spotify: %v - %v)",
-			string(track.ID),
-			song.Artist, song.Title,
-			artistsToString(track.Artists), track.Name)
-
-		song.SpotifyID = string(track.ID)
+	if len(res.Tracks.Tracks) < 1 {
+		log.Printf("Song not found: %+v", song)
+		atomic.AddInt64(numNotFound, 1)
 
 		err = updateSong(song)
 		if err != nil {
 			return err
 		}
+
+		return nil
 	}
 
-	log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
-		len(songs), len(songsNotFound))
+	track := res.Tracks.Tracks[0]
+
+	log.Printf("Got track ID: %v (original: %v - %v) (Spotify: %v - %v)",
+		string(track.ID),
+		song.Artist, song.Title,
+		artistsToString(track.Artists), track.Name)
+
+	song.SpotifyID = string(track.ID)
+
+	err = updateSong(song)
+	if err != nil {
+		return err
+	}
+
+	// be kind and rate limit our requests
+	t := rand.Float32()
+	log.Printf("Sleeping %v seconds", t)
+	time.Sleep(time.Duration(t) * time.Second)
 
 	return nil
 }
@@ -158,7 +176,6 @@ func songsNeedingID(limit int) ([]*deathguild.Song, error) {
 	}
 
 	log.Printf("Found %v songs needing Spotify IDs", len(songs))
-
 	return songs, nil
 }
 
@@ -166,7 +183,7 @@ func updateSong(song *deathguild.Song) error {
 	// We want a NULL in this field with we didn't get an ID.
 	var spotifyID *string
 	if song.SpotifyID != "" {
-		*spotifyID = song.SpotifyID
+		spotifyID = &song.SpotifyID
 	}
 
 	_, err := db.Exec(`

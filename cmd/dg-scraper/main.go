@@ -33,6 +33,10 @@ type Conf struct {
 	// Concurrency is the number of build Goroutines that will be used to
 	// fetch information over HTTP.
 	Concurrency int `env:"CONCURRENCY,default=2"`
+
+	// DatabaseURL is a connection string for a database used to store playlist
+	// and song information.
+	DatabaseURL string `env:"DATABASE_URL,required"`
 }
 
 // PlaylistLink is simply a URL to a playlist that we've pulled from the index.
@@ -52,7 +56,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err = sql.Open("postgres", "postgres://localhost/deathguild?sslmode=disable")
+	db, err = sql.Open("postgres", conf.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -5,6 +5,7 @@
     createdb deathguild
     psql deathguild < db/structure.sql
     go install ./...
+    export $(cat .env)
     dg-scraper
 
 ## Architecture

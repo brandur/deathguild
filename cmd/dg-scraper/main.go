@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/brandur/deathguild"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
@@ -41,11 +42,6 @@ type Conf struct {
 
 // PlaylistLink is simply a URL to a playlist that we've pulled from the index.
 type PlaylistLink string
-
-// Song is an artist/title pair that we've extracted from a playlist.
-type Song struct {
-	Artist, Title string
-}
 
 var conf Conf
 var db *sql.DB
@@ -166,7 +162,7 @@ func handlePlaylist(link PlaylistLink) error {
 	return nil
 }
 
-func upsertPlaylistAndSongs(day string, songs []*Song) error {
+func upsertPlaylistAndSongs(day string, songs []*deathguild.Song) error {
 	txn, err := db.Begin()
 	if err != nil {
 		return err
@@ -222,20 +218,20 @@ func upsertPlaylistAndSongs(day string, songs []*Song) error {
 	return nil
 }
 
-func scrapePlaylist(r io.Reader) ([]*Song, error) {
+func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, err
 	}
 
 	var outErr error
-	var songs []*Song
+	var songs []*deathguild.Song
 
 	doc.Find("table.Normal tr").EachWithBreak(func(i int, s *goquery.Selection) bool {
 		artist := s.Find("td:nth-child(1)").Text()
 		song := s.Find("td:nth-child(2)").Text()
 
-		songs = append(songs, &Song{artist, song})
+		songs = append(songs, &deathguild.Song{artist, song})
 
 		return true
 	})

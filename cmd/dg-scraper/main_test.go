@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/brandur/deathguild"
 	_ "github.com/lib/pq"
 	assert "github.com/stretchr/testify/require"
 )
@@ -55,14 +56,14 @@ func TestScrapePlaylist(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t,
-		&Song{"Panic Lift", "The Path"},
+		&deathguild.Song{"Panic Lift", "The Path"},
 		songs[len(songs)-1],
 	)
 }
 
 func TestUpsertPlaylistAndSongs(t *testing.T) {
 	day := "2016-01-01"
-	songs := []*Song{
+	songs := []*deathguild.Song{
 		{"Depeche Mode", "Two Minute Warning"},
 		{"Imperative Reaction", "You Remain"},
 	}

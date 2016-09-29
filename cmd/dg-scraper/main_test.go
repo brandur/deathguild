@@ -1,36 +1,17 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"os"
 	"testing"
 
 	"github.com/brandur/deathguild"
-	_ "github.com/lib/pq"
+	tt "github.com/brandur/deathguild/testing"
 	assert "github.com/stretchr/testify/require"
 )
 
-var tablesToTruncate = []string{
-	"playlists",
-	"playlists_songs",
-	"songs",
-}
-
 func init() {
-	var err error
-	db, err = sql.Open("postgres",
-		"postgres://localhost/deathguild-test?sslmode=disable")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, table := range tablesToTruncate {
-		_, err = db.Exec(`TRUNCATE TABLE ` + table + ` CASCADE`)
-		if err != nil {
-			panic(err)
-		}
-	}
+	db = tt.DB
 }
 
 func TestScrapeIndex(t *testing.T) {
@@ -62,6 +43,8 @@ func TestScrapePlaylist(t *testing.T) {
 }
 
 func TestUpsertPlaylistAndSongs(t *testing.T) {
+	tt.TruncateTestDB()
+
 	day := "2016-01-01"
 	songs := []*deathguild.Song{
 		{Artist: "Depeche Mode", Title: "Two Minute Warning"},

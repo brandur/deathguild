@@ -7,6 +7,7 @@ import (
 
 	"github.com/brandur/deathguild"
 	"github.com/joeshaw/envdecode"
+	_ "github.com/lib/pq"
 	"github.com/zmb3/spotify"
 )
 
@@ -56,26 +57,47 @@ func main() {
 	}
 }
 
+func artistsToString(artists []spotify.SimpleArtist) string {
+	var out string
+	for i, artist := range artists {
+		if i != 0 {
+			out += ", "
+		}
+		out += artist.Name
+	}
+	return out
+}
+
 func retrieveIDs(songs []*deathguild.Song) error {
+	var songsNotFound []*deathguild.Song
+
 	for _, song := range songs {
-		searchString := fmt.Sprintf("artist:%v title:%v",
+		searchString := fmt.Sprintf("artist:%v %v",
 			song.Artist, song.Title)
 
-		res, err := client.Search(searchString, spotify.SearchTypeArtist)
+		res, err := client.Search(searchString, spotify.SearchTypeTrack)
 		if err != nil {
 			return nil
 		}
 
 		if len(res.Tracks.Tracks) < 1 {
 			log.Printf("Song not found: %+v", song)
+			songsNotFound = append(songsNotFound, song)
 			continue
 		}
 
 		track := res.Tracks.Tracks[0]
+
+		log.Printf("Got track ID: %v (original: %v - %v) (Spotify: %v - %v)",
+			string(track.ID),
+			song.Artist, song.Title,
+			artistsToString(track.Artists), track.Name)
+
 		song.SpotifyID = string(track.ID)
 	}
 
-	log.Printf("Retrieved %v Spotify ID(s) for songs", len(songs))
+	log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
+		len(songs), len(songsNotFound))
 
 	return nil
 }

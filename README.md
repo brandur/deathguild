@@ -2,12 +2,22 @@
 
 ## Setup
 
-    createdb deathguild
-    psql deathguild < db/structure.sql
-    make install
-    cp .env.sample .env
-    export $(cat .env)
-    dg-scraper
+``` sh
+createdb deathguild
+psql deathguild < db/structure.sql
+make install
+
+# you'll need to fill in Spotify credentials here
+cp .env.sample .env
+
+export $(cat .env)
+
+# creates a database of all playlist/song information
+dg-scraper
+
+# tags songs with their Spotify IDs
+dg-enrich-songs
+```
 
 ## Architecture
 

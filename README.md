@@ -13,4 +13,7 @@
 `dg-scraper` -- scrapes the Death Guild website and stores information to Postgres.
 `dg-spotify` -- uses Spotify to enrich database information and create playlists.
 
+## Vendoring Dependencies
 
+    go get -u github.com/kardianos/govendor
+    govendor add +external

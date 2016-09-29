@@ -1,0 +1,81 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "OfHbisNes0gI+S16gYBreh7Riv8=",
+			"path": "github.com/PuerkitoBio/goquery",
+			"revision": "152b1a2c8f5d0340f658bb656032a39b94e52958",
+			"revisionTime": "2016-08-31T16:22:11Z"
+		},
+		{
+			"checksumSHA1": "QCAKzv0affIi7mlcGqPR8S3w6s0=",
+			"origin": "github.com/brandur/sorg/vendor/github.com/Sirupsen/logrus",
+			"path": "github.com/Sirupsen/logrus",
+			"revision": "66661295a554b1f6a987633161bc9dabc75229c0",
+			"revisionTime": "2016-09-29T15:38:42Z"
+		},
+		{
+			"checksumSHA1": "oLYnEHr1dTmo+QYudDHJJWNZ0a4=",
+			"path": "github.com/andybalholm/cascadia",
+			"revision": "1c31af6f6c1a7b101ed05aacc7d8a738b43ae86e",
+			"revisionTime": "2016-08-31T15:30:56Z"
+		},
+		{
+			"checksumSHA1": "CrDS7/DO2ZXpw6OlLdUxSYXX3bs=",
+			"path": "github.com/brandur/sorg/pool",
+			"revision": "66661295a554b1f6a987633161bc9dabc75229c0",
+			"revisionTime": "2016-09-29T15:38:42Z"
+		},
+		{
+			"checksumSHA1": "TrOFIB300pkPMiI8CDHR6ta6bKs=",
+			"path": "github.com/joeshaw/envdecode",
+			"revision": "573d2abb11d7ad19d922aa80d4b7870225c20911",
+			"revisionTime": "2015-10-12T13:47:01Z"
+		},
+		{
+			"checksumSHA1": "Ncf0ItwKAuTF5eNkGW+Pk78pwzM=",
+			"path": "github.com/lib/pq",
+			"revision": "b269bd035a727d6c1081f76e7a239a1b00674c40",
+			"revisionTime": "2015-08-05T09:05:26Z"
+		},
+		{
+			"checksumSHA1": "xppHi82MLqVx1eyQmbhTesAEjx8=",
+			"path": "github.com/lib/pq/oid",
+			"revision": "b269bd035a727d6c1081f76e7a239a1b00674c40",
+			"revisionTime": "2015-08-05T09:05:26Z"
+		},
+		{
+			"checksumSHA1": "b2zeY1R5JLmyuRe0mJ0RvP1tlCI=",
+			"path": "github.com/stretchr/testify/assert",
+			"revision": "089c7181b8c728499929ff09b62d3fdd8df8adff",
+			"revisionTime": "2015-06-20T23:27:11Z"
+		},
+		{
+			"checksumSHA1": "IW/Eq1RV/1pPvJzYpRBFuAHHpE8=",
+			"path": "github.com/stretchr/testify/require",
+			"revision": "089c7181b8c728499929ff09b62d3fdd8df8adff",
+			"revisionTime": "2015-06-20T23:27:11Z"
+		},
+		{
+			"checksumSHA1": "vqc3a+oTUGX8PmD0TS+qQ7gmN8I=",
+			"path": "golang.org/x/net/html",
+			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172",
+			"revisionTime": "2016-02-25T17:50:37Z"
+		},
+		{
+			"checksumSHA1": "00eQaGynDYrv3tL+C7l9xH0IDZg=",
+			"path": "golang.org/x/net/html/atom",
+			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172",
+			"revisionTime": "2016-02-25T17:50:37Z"
+		},
+		{
+			"checksumSHA1": "jfNsmWQzKrTjBuwirilt4blwXTo=",
+			"origin": "github.com/brandur/sorg/vendor/golang.org/x/sys/unix",
+			"path": "golang.org/x/sys/unix",
+			"revision": "66661295a554b1f6a987633161bc9dabc75229c0",
+			"revisionTime": "2016-09-29T15:38:42Z"
+		}
+	],
+	"rootPath": "github.com/brandur/deathguild"
+}

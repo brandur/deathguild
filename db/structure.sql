@@ -9,7 +9,8 @@ DROP TABLE IF EXISTS songs CASCADE;
 --
 CREATE TABLE playlists (
     id bigserial PRIMARY KEY,
-    day date UNIQUE
+    day date UNIQUE,
+    spotify_id TEXT
 );
 
 --
@@ -18,7 +19,8 @@ CREATE TABLE playlists (
 CREATE TABLE songs (
     id bigserial PRIMARY KEY,
     artist TEXT,
-    title TEXT
+    title TEXT,
+    spotify_id TEXT
 );
 
 ALTER TABLE songs

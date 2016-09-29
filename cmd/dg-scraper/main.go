@@ -12,25 +12,46 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/brandur/sorg/pool"
+	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 )
 
-const concurrency = 2
+const (
+	// Base URL of the site with playlist index and playlist information. It's
+	// sort of terrible to hardcode this, but we rate limit to make sure that
+	// the site isn't hit very hard, and only need to retrieve any given
+	// playlist one time.
+	darkdbURL = "http://www.darkdb.com/deathguild"
 
-const darkdbURL = "http://www.darkdb.com/deathguild"
+	// The location of the playlist index.
+	indexURL = darkdbURL + "/DateList.aspx"
+)
 
-const indexURL = darkdbURL + "/DateList.aspx"
+// Conf contains configuration information for the command. It's extracted from
+// environment variables.
+type Conf struct {
+	// Concurrency is the number of build Goroutines that will be used to
+	// fetch information over HTTP.
+	Concurrency int `env:"CONCURRENCY,default=2"`
+}
 
+// PlaylistLink is simply a URL to a playlist that we've pulled from the index.
 type PlaylistLink string
 
+// Song is an artist/title pair that we've extracted from a playlist.
 type Song struct {
 	Artist, Title string
 }
 
+var conf Conf
 var db *sql.DB
 
 func main() {
-	var err error
+	err := envdecode.Decode(&conf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	db, err = sql.Open("postgres", "postgres://localhost/deathguild?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
@@ -57,8 +78,8 @@ func main() {
 		}))
 	}
 
-	log.Printf("Using goroutine pool with concurrency %v", concurrency)
-	p := pool.NewPool(tasks, concurrency)
+	log.Printf("Using goroutine pool with concurrency %v", conf.Concurrency)
+	p := pool.NewPool(tasks, conf.Concurrency)
 	p.Run()
 
 	for _, task := range tasks {

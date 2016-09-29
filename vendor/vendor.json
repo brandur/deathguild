@@ -58,6 +58,18 @@
 			"revisionTime": "2015-06-20T23:27:11Z"
 		},
 		{
+			"checksumSHA1": "yBjXIqRPv6R1z6bQpstqvj+YFo4=",
+			"path": "github.com/zmb3/spotify",
+			"revision": "3dbb3c46d4c11923f5137940964718f6d7adfcb9",
+			"revisionTime": "2016-01-19T14:12:43Z"
+		},
+		{
+			"checksumSHA1": "5ARrN3Zq+E9zazFb/N+b08Serys=",
+			"path": "golang.org/x/net/context",
+			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172",
+			"revisionTime": "2016-02-25T17:50:37Z"
+		},
+		{
 			"checksumSHA1": "vqc3a+oTUGX8PmD0TS+qQ7gmN8I=",
 			"path": "golang.org/x/net/html",
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172",
@@ -68,6 +80,18 @@
 			"path": "golang.org/x/net/html/atom",
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172",
 			"revisionTime": "2016-02-25T17:50:37Z"
+		},
+		{
+			"checksumSHA1": "mktBVED98G2vv+OKcSgtnFVZC1Y=",
+			"path": "golang.org/x/oauth2",
+			"revision": "2baa8a1b9338cf13d9eeb27696d761155fa480be",
+			"revisionTime": "2015-12-03T21:21:41Z"
+		},
+		{
+			"checksumSHA1": "st9F4RETvsjcEHmnMvF9XvlAxDE=",
+			"path": "golang.org/x/oauth2/internal",
+			"revision": "2baa8a1b9338cf13d9eeb27696d761155fa480be",
+			"revisionTime": "2015-12-03T21:21:41Z"
 		},
 		{
 			"checksumSHA1": "jfNsmWQzKrTjBuwirilt4blwXTo=",

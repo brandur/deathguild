@@ -10,6 +10,13 @@ import (
 	"github.com/brandur/sorg/pool"
 )
 
+const (
+	// Release allows CSS and JS assets to be invalidated quickly by changing
+	// their URL. Bump this number whenever something significant changes that
+	// should be invalidated as quickly as possible.
+	Release = "1"
+)
+
 // Playlist is a playlist for a single night of Deathguild.
 type Playlist struct {
 	// Day is the date on which the playlist originally played.
@@ -94,6 +101,8 @@ type Song struct {
 
 var outputDirs = []string{
 	".",
+	"assets",
+	"assets/" + Release,
 	"playlists",
 }
 
@@ -111,7 +120,7 @@ func CreateOutputDirs(targetDir string) error {
 	return nil
 }
 
-// Runs the given tasks in a pool.
+// RunTasks runs the given tasks in a pool.
 //
 // After the run, if any errors occurred, it prints the first 10. Returns true
 // if all tasks succeeded. If a false is returned, the caller should consider

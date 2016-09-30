@@ -17,6 +17,13 @@ import (
 	"github.com/yosssi/ace"
 )
 
+const (
+	// Release allows CSS and JS assets to be invalidated quickly by changing
+	// their URL. Bump this number whenever something significant changes that
+	// should be invalidated as quickly as possible.
+	Release = 1
+)
+
 // Conf contains configuration information for the command. It's extracted
 // from environment variables.
 type Conf struct {
@@ -222,7 +229,17 @@ func renderTemplate(view, target string, locals map[string]interface{}) error {
 	writer := bufio.NewWriter(file)
 	defer writer.Flush()
 
-	err = template.Execute(writer, locals)
+	data := map[string]interface{}{
+		"Release": Release,
+	}
+
+	// Override our basic data map with anything that the specific page sent
+	// in.
+	for k, v := range locals {
+		data[k] = v
+	}
+
+	err = template.Execute(writer, data)
 	if err != nil {
 		return err
 	}

@@ -68,7 +68,7 @@ func main() {
 	var tasks []*pool.Task
 
 	tasks = append(tasks, pool.NewTask(func() error {
-		return buildIndex(txn, playlists)
+		return buildIndex(playlists)
 	}))
 
 	for _, playlist := range playlists {
@@ -86,7 +86,7 @@ func main() {
 	}
 }
 
-func buildIndex(txn *sql.Tx, playlists []*deathguild.Playlist) error {
+func buildIndex(playlists []*deathguild.Playlist) error {
 	err := renderTemplate(
 		path.Join(".", "views", "index"),
 		path.Join(conf.TargetDir, "index.html"),

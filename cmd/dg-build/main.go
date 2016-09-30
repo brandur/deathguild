@@ -36,6 +36,12 @@ type Conf struct {
 	TargetDir string `env:"TARGET_DIR,default=./public"`
 }
 
+// PlaylistYear holds playlists grouped by year.
+type PlaylistYear struct {
+	Playlists []*deathguild.Playlist
+	Year      int
+}
+
 var conf Conf
 var db *sql.DB
 
@@ -60,7 +66,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	playlists, err := loadPlaylists(txn)
+	playlistYears, err := loadPlaylistYears(txn)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -68,14 +74,16 @@ func main() {
 	var tasks []*pool.Task
 
 	tasks = append(tasks, pool.NewTask(func() error {
-		return buildIndex(playlists)
+		return buildIndex(playlistYears)
 	}))
 
-	for _, playlist := range playlists {
-		p := playlist
-		tasks = append(tasks, pool.NewTask(func() error {
-			return buildPlaylist(p)
-		}))
+	for _, playlistYear := range playlistYears {
+		for _, playlist := range playlistYear.Playlists {
+			p := playlist
+			tasks = append(tasks, pool.NewTask(func() error {
+				return buildPlaylist(p)
+			}))
+		}
 	}
 
 	deathguild.RunTasks(conf.Concurrency, tasks)
@@ -86,13 +94,13 @@ func main() {
 	}
 }
 
-func buildIndex(playlists []*deathguild.Playlist) error {
+func buildIndex(playlistYears []*PlaylistYear) error {
 	err := renderTemplate(
 		path.Join(".", "views", "index"),
 		path.Join(conf.TargetDir, "index.html"),
 		map[string]interface{}{
-			"Playlists": playlists,
-			"Title":     "Playlists Index",
+			"PlaylistYears": playlistYears,
+			"Title":         "Playlists Index",
 		},
 	)
 	if err != nil {
@@ -142,7 +150,7 @@ func buildPlaylistInTransaction(txn *sql.Tx, playlist *deathguild.Playlist) erro
 	return nil
 }
 
-func loadPlaylists(txn *sql.Tx) ([]*deathguild.Playlist, error) {
+func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
 	rows, err := txn.Query(`
 		SELECT id, day, spotify_id
 		FROM playlists
@@ -155,7 +163,8 @@ func loadPlaylists(txn *sql.Tx) ([]*deathguild.Playlist, error) {
 	}
 	defer rows.Close()
 
-	var playlists []*deathguild.Playlist
+	var playlistYear *PlaylistYear
+	var playlistYears []*PlaylistYear
 
 	for rows.Next() {
 		var playlist deathguild.Playlist
@@ -167,10 +176,16 @@ func loadPlaylists(txn *sql.Tx) ([]*deathguild.Playlist, error) {
 		if err != nil {
 			return nil, err
 		}
-		playlists = append(playlists, &playlist)
+
+		if playlistYear == nil || playlistYear.Year != playlist.Day.Year() {
+			playlistYear = &PlaylistYear{Year: playlist.Day.Year()}
+			playlistYears = append(playlistYears, playlistYear)
+		}
+
+		playlistYear.Playlists = append(playlistYear.Playlists, &playlist)
 	}
 
-	return playlists, nil
+	return playlistYears, nil
 }
 
 // Returns some basic length information about the playlist.

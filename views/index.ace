@@ -1,11 +1,14 @@
 = content main
   h1 Death Guild
   p List of playlists:
-  ul
-    {{range .Playlists}}
-      li
-        a href="/playlists/{{.FormattedDay}}"
-          {{.FormattedDay}}
-        |  
-        a href={{SpotifyPlaylistLink . }} Spotify playlist
-    {{end}}
+  {{range .PlaylistYears}}
+    h2 {{.Year}}
+    ul
+      {{range .Playlists}}
+        li
+          a href="/playlists/{{.FormattedDay}}"
+            {{.FormattedDay}}
+          |  
+          a href={{SpotifyPlaylistLink . }} Spotify playlist
+      {{end}}
+  {{end}}

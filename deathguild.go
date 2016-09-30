@@ -88,9 +88,11 @@ func RunTasks(concurrency int, tasks []*pool.Task) {
 		}
 		if numErrors >= 10 {
 			log.Fatal("Too many errors.")
-			break
-		} else if p.HasErrors() {
-			os.Exit(1)
+			goto done
 		}
 	}
+	if p.HasErrors() {
+		os.Exit(1)
+	}
+done:
 }

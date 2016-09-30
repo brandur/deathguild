@@ -6,6 +6,10 @@ build:
 check-gofmt:
 	scripts/check_gofmt.sh
 
+clean:
+	mkdir -p public/
+	rm -f -r public/*
+
 install:
 	go install $(shell go list ./... | egrep -v '/vendor/')
 

@@ -4,6 +4,7 @@
   ul
     {{range .Playlists}}
       li
-        {{.FormattedDay}}
+        a href="/playlists/{{.FormattedDay}}"
+          {{.FormattedDay}}
         a href={{SpotifyPlaylistLink . }} Spotify
     {{end}}

@@ -71,8 +71,9 @@ func main() {
 	}))
 
 	for _, playlist := range playlists {
+		p := playlist
 		tasks = append(tasks, pool.NewTask(func() error {
-			return buildPlaylist(txn, playlist)
+			return buildPlaylist(txn, p)
 		}))
 	}
 
@@ -85,27 +86,14 @@ func main() {
 }
 
 func buildIndex(txn *sql.Tx, playlists []*deathguild.Playlist) error {
-	template, err := ace.Load("./layouts/main", "./views/index",
-		&ace.Options{FuncMap: template.FuncMap{
-			"SpotifyPlaylistLink": spotifyPlaylistLink,
-		}})
-	if err != nil {
-		return err
-	}
-
-	file, err := os.Create(path.Join(conf.TargetDir, "index.html"))
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	writer := bufio.NewWriter(file)
-	defer writer.Flush()
-
-	err = template.Execute(writer, map[string]interface{}{
-		"Playlists": playlists,
-		"Title":     "Playlists Index",
-	})
+	err := renderTemplate(
+		path.Join(".", "views", "index"),
+		path.Join(conf.TargetDir, "index.html"),
+		map[string]interface{}{
+			"Playlists": playlists,
+			"Title":     "Playlists Index",
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -114,6 +102,18 @@ func buildIndex(txn *sql.Tx, playlists []*deathguild.Playlist) error {
 }
 
 func buildPlaylist(txn *sql.Tx, playlist *deathguild.Playlist) error {
+	err := renderTemplate(
+		path.Join(".", "views", "playlist"),
+		path.Join(conf.TargetDir, "playlists", playlist.FormattedDay()),
+		map[string]interface{}{
+			"Playlist": playlist,
+			"Title":    "Death Guild - " + playlist.FormattedDay(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -146,6 +146,32 @@ func loadPlaylists(txn *sql.Tx) ([]*deathguild.Playlist, error) {
 	}
 
 	return playlists, nil
+}
+
+func renderTemplate(view, target string, locals map[string]interface{}) error {
+	template, err := ace.Load("./layouts/main", view,
+		&ace.Options{FuncMap: template.FuncMap{
+			"SpotifyPlaylistLink": spotifyPlaylistLink,
+		}})
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	defer writer.Flush()
+
+	err = template.Execute(writer, locals)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func spotifyPlaylistLink(playlist *deathguild.Playlist) string {

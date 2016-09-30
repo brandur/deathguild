@@ -1,4 +1,7 @@
-all: install test vet lint check-gofmt
+all: install test vet lint check-gofmt build
+
+build:
+	$(GOPATH)/bin/dg-build
 
 check-gofmt:
 	scripts/check_gofmt.sh
@@ -15,9 +18,27 @@ install:
 lint:
 	go list ./... | egrep -v '/vendor/' | sed "s|^github\.com/brandur/sorg|.|" | xargs -I{} -n1 sh -c '$(GOPATH)/bin/golint -set_exit_status {} || exit 255'
 
+serve:
+	$(GOPATH)/bin/dg-serve
+
 test:
 	psql postgres://localhost/deathguild-test < db/structure.sql > /dev/null
 	go test $(shell go list ./... | egrep -v '/vendor/')
 
 vet:
 	go vet $(shell go list ./... | egrep -v '/vendor/')
+
+watch:
+	fswatch -o content/ layouts/ pages/ views/ | xargs -n1 -I{} make build
+
+# This is designed to be compromise between being explicit and readability. We
+# can allow the find to discover everything in vendor/, but then the fswatch
+# invocation becomes a huge unreadable wall of text that gets dumped into the
+# shell. Instead, find all our own *.go files and then just tack the vendor/
+# directory on separately (fswatch will watch it recursively).
+GO_FILES := $(shell find . -type f -name "*.go" ! -path "./vendor/*")
+
+# We recompile our Go source when a file changes, but we also rebuild the site
+# because a change in source may have affected the build formula.
+watch-go:
+	fswatch -o $(GO_FILES) vendor/ | xargs -n1 -I{} make install build

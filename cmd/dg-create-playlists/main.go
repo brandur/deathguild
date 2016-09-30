@@ -15,8 +15,8 @@ import (
 // Format for the names of Death Guild playlists.
 const playlistNameFormat = "Death Guild Playlist - %v"
 
-// Conf contains configuration information for the command. It's extracted from
-// environment variables.
+// Conf contains configuration information for the command. It's extracted
+// from environment variables.
 type Conf struct {
 	// ClientID is our Spotify applicaton's client ID.
 	ClientID string `env:"CLIENT_ID,required"`
@@ -28,8 +28,8 @@ type Conf struct {
 	// fetch information over HTTP.
 	Concurrency int `env:"CONCURRENCY,default=5"`
 
-	// DatabaseURL is a connection string for a database used to store playlist
-	// and song information.
+	// DatabaseURL is a connection string for a database used to store
+	// playlist and song information.
 	DatabaseURL string `env:"DATABASE_URL,required"`
 
 	// RefreshToken is our Spotify refresh token.
@@ -42,6 +42,9 @@ var db *sql.DB
 var userID string
 
 func main() {
+	var playlistMap map[string]spotify.ID
+	var user *spotify.PrivateUser
+
 	err := envdecode.Decode(&conf)
 	if err != nil {
 		log.Fatal(err)
@@ -52,18 +55,40 @@ func main() {
 		log.Fatal(err)
 	}
 
+	txn, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Do one initial fetch out of the loop below just so that we can die very
+	// early (and without having to wait for the Spotify playlist cache to
+	// build) if we don't need to do any work.
+	playlists, err := playlistsNeedingID(txn, 1)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = txn.Rollback()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(playlists) == 0 {
+		goto done
+	}
+
 	client = deathguild.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	// A user is needed for some API operations, so just cache one for the
 	// whole set of requests.
-	user, err := client.CurrentUser()
+	user, err = client.CurrentUser()
 	if err != nil {
 		log.Fatal(err)
 	}
 	userID = user.ID
 
-	playlistMap, err := getPlaylistMap()
+	playlistMap, err = getPlaylistMap()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,8 +107,7 @@ func main() {
 		}
 
 		if len(playlists) == 0 {
-			log.Printf("Finished creating all playlists")
-			break
+			goto done
 		}
 
 		var tasks []*pool.Task
@@ -107,6 +131,9 @@ func main() {
 
 		log.Printf("Created %v Spotify playlist(s)", len(playlists))
 	}
+
+done:
+	log.Printf("Finished creating all playlists")
 }
 
 func createPlaylist(name string) (spotify.ID, error) {

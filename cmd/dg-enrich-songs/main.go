@@ -68,8 +68,7 @@ func main() {
 		}
 
 		if len(songs) == 0 {
-			log.Printf("Finished checking for song IDs")
-			break
+			goto done
 		}
 
 		var tasks []*pool.Task
@@ -95,6 +94,9 @@ func main() {
 		log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
 			len(songs)-int(numNotFound), numNotFound)
 	}
+
+done:
+	log.Printf("Finished checking for song IDs")
 }
 
 func artistsToString(artists []spotify.SimpleArtist) string {

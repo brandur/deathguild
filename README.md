@@ -1,6 +1,15 @@
 # deathguild [![Build Status](https://travis-ci.org/brandur/deathguild.svg?branch=master)](https://travis-ci.org/brandur/deathguild)
 
+Death Guild is the oldest continually operating gothic/industrial dance club in
+the United States, and second in the world. [More information here][wiki].
+
+This app fetches playlists from the official Death Guild site, creates Spotify
+versions of each playlists, and then deploys a static site where they can be
+accessed. A [live version can be visited here][site].
+
 ## Setup
+
+Setup the project using this set of commands:
 
 ``` sh
 createdb deathguild
@@ -26,9 +35,48 @@ dg-build
 
 # serves the built static site
 dg-serve
+
+# deploy the built site to S3
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+export S3_BUCKET=
+make deploy
 ```
+
+A `Procfile` provides a watch/rebuild/serve loop for iterating on the site:
+
+    forego start
+
+## Testing
+
+Run the tests with:
+
+    createdb deathguild-test
+    make test
 
 ## Vendoring Dependencies
 
+I used govendor to pull in dependencies. New ones can be vendored using these
+commands:
+
     go get -u github.com/kardianos/govendor
     govendor add +external
+
+## Deployment
+
+The site is deployed according to the [AWS Instrinsic Static Site][intrinsic]
+with AWS CloudFlare and S3 and deployed automatically from Travis. Music
+metadata is retrieved from Spotify's API. State is maintained inside of a
+Postgres database on Heroku. Connection strings are in `.travis.yml` and
+encrypted with `travis encrypt DATABASE_URL=...`. An AWS Lambda function
+rebuilds `master` periodically.
+
+* Public URL: https://deathguild.brandur.org
+* CloudFront distribution ID: `ENEEJ6NCB4DP`
+* S3 bucket: `deathguild-playlists`
+* Production database: `PRODUCTION_URL` on app `deathguild-playlists`.
+* Test database: `TEST_URL` on app `deathguild-playlists`.
+
+[intrinsic]: https://brandur.org/aws-intrinsic-static
+[site]: https://deathguild.brandur.org
+[wiki]: https://en.wikipedia.org/wiki/Death_Guild

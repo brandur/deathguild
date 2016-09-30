@@ -128,6 +128,12 @@ func handlePlaylist(link PlaylistLink) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		err = txn.Commit()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	var playlistID int
 	err = txn.QueryRow(`
@@ -155,11 +161,6 @@ func handlePlaylist(link PlaylistLink) error {
 	}
 
 	err = upsertPlaylistAndSongs(txn, day, songs)
-	if err != nil {
-		return err
-	}
-
-	err = txn.Commit()
 	if err != nil {
 		return err
 	}

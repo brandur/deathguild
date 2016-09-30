@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/brandur/deathguild"
+	"github.com/joeshaw/envdecode"
 	assert "github.com/stretchr/testify/require"
 
 	// This package provides the general database infrastructure for the other
@@ -13,20 +14,33 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Conf contains configuration information for the command. It's extracted
+// from environment variables.
+type Conf struct {
+	// DatabaseURL is a connection string for a database used to store
+	// playlist and song information.
+	DatabaseURL string `env:"DATABASE_URL,default=postgres://localhost/deathguild-test?sslmode=disable"`
+}
+
 var tablesToTruncate = []string{
 	"playlists",
 	"playlists_songs",
 	"songs",
 }
 
+var conf Conf
+
 // DB references a testing database that can be used in the tests for any
 // modules that need a database connection.
 var DB *sql.DB
 
 func init() {
-	var err error
-	DB, err = sql.Open("postgres",
-		"postgres://localhost/deathguild-test?sslmode=disable")
+	err := envdecode.Decode(&conf)
+	if err != nil {
+		panic(err)
+	}
+
+	DB, err = sql.Open("postgres", conf.DatabaseURL)
 	if err != nil {
 		panic(err)
 	}

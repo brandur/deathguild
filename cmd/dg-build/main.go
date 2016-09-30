@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"database/sql"
+	"fmt"
 	"html/template"
 	"log"
 	"os"
@@ -172,9 +173,25 @@ func loadPlaylists(txn *sql.Tx) ([]*deathguild.Playlist, error) {
 	return playlists, nil
 }
 
+// Returns some basic length information about the playlist.
+func playlistInfo(playlist *deathguild.Playlist) string {
+	var numWithSpotifyID int
+	for _, song := range playlist.Songs {
+		if song.SpotifyID != "" {
+			numWithSpotifyID++
+		}
+	}
+
+	percent := float64(numWithSpotifyID) / float64(len(playlist.Songs)) * 100
+
+	return fmt.Sprintf("%v song(s). %v song(s) (%.1f%%) found in Spotify.",
+		len(playlist.Songs), numWithSpotifyID, percent)
+}
+
 func renderTemplate(view, target string, locals map[string]interface{}) error {
 	template, err := ace.Load("./layouts/main", view,
 		&ace.Options{FuncMap: template.FuncMap{
+			"PlaylistInfo":        playlistInfo,
 			"SpotifyPlaylistLink": spotifyPlaylistLink,
 		}})
 	if err != nil {

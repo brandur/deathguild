@@ -78,6 +78,19 @@ rebuilds `master` periodically.
 * Test database: `TEST_URL` on app `deathguild-playlists`.
 * Lambda rebuild period: 4 hours
 
+## Notes
+
+* Spotify has made procuring valid credentials (which are not unreasonably rate
+  limited) for an app like this one quite annoying. I'd recommend creating a
+  Spotify app to get a client ID/secret, and then using their [web API
+  authentication examples app][spotify-example] to procure a usable refresh
+  token (which this project will then use to get access tokens).
+
+* Spotify's API rate limits are very aggressive and an initial backfill might
+  take quite some time. However, all fetched state is remembered so a mostly
+  up-to-date data set should see no rate limiting.
+
 [intrinsic]: https://brandur.org/aws-intrinsic-static
 [site]: https://deathguild.brandur.org
+[spotify-example]: https://github.com/spotify/web-api-auth-examples
 [wiki]: https://en.wikipedia.org/wiki/Death_Guild

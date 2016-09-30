@@ -25,7 +25,7 @@ import (
 type Conf struct {
 	// Concurrency is the number of build Goroutines that will be used to
 	// fetch information over HTTP.
-	Concurrency int `env:"CONCURRENCY,default=30"`
+	Concurrency int `env:"CONCURRENCY,default=20"`
 
 	// DatabaseURL is a connection string for a database used to store
 	// playlist and song information.

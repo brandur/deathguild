@@ -58,16 +58,22 @@ func (p *Playlist) FetchSongs(txn *sql.Tx) error {
 
 	for rows.Next() {
 		var song Song
+		var spotifyCheckedAt *time.Time
 		var spotifyID *string
+
 		err = rows.Scan(
 			&song.ID,
 			&song.Artist,
 			&song.Title,
-			&song.SpotifyCheckedAt,
+			&spotifyCheckedAt,
 			&spotifyID,
 		)
 		if err != nil {
 			return err
+		}
+
+		if spotifyCheckedAt != nil {
+			song.SpotifyCheckedAt = *spotifyCheckedAt
 		}
 
 		if spotifyID != nil {

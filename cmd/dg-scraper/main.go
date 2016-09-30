@@ -101,7 +101,6 @@ func scrapeIndex(r io.Reader) ([]PlaylistLink, error) {
 		}
 
 		links = append(links, PlaylistLink(link))
-		log.Printf("Found: %v (%v)", link, s.Text())
 
 		return true
 	})
@@ -109,6 +108,7 @@ func scrapeIndex(r io.Reader) ([]PlaylistLink, error) {
 		return nil, outErr
 	}
 
+	log.Printf("Found %v playlist(s) in index", len(links))
 	return links, nil
 }
 

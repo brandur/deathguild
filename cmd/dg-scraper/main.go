@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -78,14 +79,8 @@ func main() {
 		}))
 	}
 
-	log.Printf("Using goroutine pool with concurrency %v", conf.Concurrency)
-	p := pool.NewPool(tasks, conf.Concurrency)
-	p.Run()
-
-	for _, task := range tasks {
-		if task.Err != nil {
-			log.Fatal(task.Err)
-		}
+	if !deathguild.RunTasks(conf.Concurrency, tasks) {
+		os.Exit(1)
 	}
 }
 

@@ -125,7 +125,7 @@ func CreateOutputDirs(targetDir string) error {
 // After the run, if any errors occurred, it prints the first 10. Returns true
 // if all tasks succeeded. If a false is returned, the caller should consider
 // exiting with non-zero status.
-func RunTasks(concurrency int, tasks []*pool.Task) {
+func RunTasks(concurrency int, tasks []*pool.Task) bool {
 	log.Printf("Running %v task(s) with concurrency %v",
 		len(tasks), concurrency)
 
@@ -139,12 +139,9 @@ func RunTasks(concurrency int, tasks []*pool.Task) {
 			numErrors++
 		}
 		if numErrors >= 10 {
-			log.Fatal("Too many errors.")
-			goto done
+			log.Printf("Too many errors.")
+			break
 		}
 	}
-	if p.HasErrors() {
-		os.Exit(1)
-	}
-done:
+	return !p.HasErrors()
 }

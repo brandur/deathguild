@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/brandur/deathguild"
 	"github.com/brandur/sorg/pool"
@@ -39,12 +40,10 @@ type Conf struct {
 var client *spotify.Client
 var conf Conf
 var db *sql.DB
+var playlistMap map[string]spotify.ID
 var userID string
 
 func main() {
-	var playlistMap map[string]spotify.ID
-	var user *spotify.PrivateUser
-
 	err := envdecode.Decode(&conf)
 	if err != nil {
 		log.Fatal(err)
@@ -82,11 +81,10 @@ func main() {
 
 	// A user is needed for some API operations, so just cache one for the
 	// whole set of requests.
-	user, err = client.CurrentUser()
+	userID, err = getCurrentUserID()
 	if err != nil {
 		log.Fatal(err)
 	}
-	userID = user.ID
 
 	playlistMap, err = getPlaylistMap()
 	if err != nil {
@@ -94,42 +92,13 @@ func main() {
 	}
 
 	for {
-		txn, err := db.Begin()
+		done, err := runLoop()
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		// Do work in batches so we don't have to keep everything in memory
-		// at once.
-		playlists, err := playlistsNeedingID(txn, 100)
-		if err != nil {
-			log.Fatal(err)
+		if done {
+			break
 		}
-
-		if len(playlists) == 0 {
-			goto done
-		}
-
-		var tasks []*pool.Task
-
-		for _, playlist := range playlists {
-			p := playlist
-			tasks = append(tasks, pool.NewTask(func() error {
-				return createPlaylistWithSongs(txn, playlistMap, p)
-			}))
-		}
-
-		log.Printf("Using goroutine pool with concurrency %v",
-			conf.Concurrency)
-		p := pool.NewPool(tasks, conf.Concurrency)
-		p.Run()
-
-		err = txn.Commit()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("Created %v Spotify playlist(s)", len(playlists))
 	}
 
 done:
@@ -183,6 +152,14 @@ func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 	log.Printf(`Updated playlist: "%v" (ID %v) with %v song(s)`,
 		name, playlistID, len(playlist.Songs))
 	return nil
+}
+
+func getCurrentUserID() (string, error) {
+	user, err := client.CurrentUser()
+	if err != nil {
+		return "", err
+	}
+	return user.ID, nil
 }
 
 // Spotify has an incredibly low pagination limit, so it's much faster to just
@@ -264,6 +241,46 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) 
 
 	log.Printf("Found %v playlist(s) needing Spotify IDs", len(playlists))
 	return playlists, nil
+}
+
+func runLoop() (bool, error) {
+	txn, err := db.Begin()
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		err := txn.Commit()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	// Do work in batches so we don't have to keep everything in memory
+	// at once.
+	playlists, err := playlistsNeedingID(txn, 100)
+	if err != nil {
+		return false, err
+	}
+
+	if len(playlists) == 0 {
+		return true, nil
+	}
+
+	var tasks []*pool.Task
+
+	for _, playlist := range playlists {
+		p := playlist
+		tasks = append(tasks, pool.NewTask(func() error {
+			return createPlaylistWithSongs(txn, playlistMap, p)
+		}))
+	}
+
+	if !deathguild.RunTasks(conf.Concurrency, tasks) {
+		os.Exit(1)
+	}
+
+	log.Printf("Created %v Spotify playlist(s)", len(playlists))
+	return false, nil
 }
 
 func updatePlaylist(txn *sql.Tx, playlist *deathguild.Playlist) error {

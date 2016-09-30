@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -55,47 +56,15 @@ func main() {
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	for {
-		txn, err := db.Begin()
+		done, err := runLoop()
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		// Do work in batches so we don't have to keep everything in memory
-		// at once.
-		songs, err := songsNeedingID(txn, 100)
-		if err != nil {
-			log.Fatal(err)
+		if done {
+			break
 		}
-
-		if len(songs) == 0 {
-			goto done
-		}
-
-		var tasks []*pool.Task
-		var numNotFound int64
-
-		for _, song := range songs {
-			s := song
-			tasks = append(tasks, pool.NewTask(func() error {
-				return retrieveID(txn, s, &numNotFound)
-			}))
-		}
-
-		log.Printf("Using goroutine pool with concurrency %v",
-			conf.Concurrency)
-		p := pool.NewPool(tasks, conf.Concurrency)
-		p.Run()
-
-		err = txn.Commit()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
-			len(songs)-int(numNotFound), numNotFound)
 	}
 
-done:
 	log.Printf("Finished checking for song IDs")
 }
 
@@ -153,6 +122,48 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 	time.Sleep(time.Duration(t) * time.Second)
 
 	return nil
+}
+
+func runLoop() (bool, error) {
+	txn, err := db.Begin()
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		err := txn.Commit()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	// Do work in batches so we don't have to keep everything in memory
+	// at once.
+	songs, err := songsNeedingID(txn, 100)
+	if err != nil {
+		return false, err
+	}
+
+	if len(songs) == 0 {
+		return true, nil
+	}
+
+	var tasks []*pool.Task
+	var numNotFound int64
+
+	for _, song := range songs {
+		s := song
+		tasks = append(tasks, pool.NewTask(func() error {
+			return retrieveID(txn, s, &numNotFound)
+		}))
+	}
+
+	if !deathguild.RunTasks(conf.Concurrency, tasks) {
+		os.Exit(1)
+	}
+
+	log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
+		len(songs)-int(numNotFound), numNotFound)
+	return true, nil
 }
 
 func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {

@@ -70,6 +70,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		err := txn.Commit()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	playlistYears, err := loadPlaylistYears(txn)
 	if err != nil {
@@ -101,11 +107,8 @@ func main() {
 		}
 	}
 
-	deathguild.RunTasks(conf.Concurrency, tasks)
-
-	err = txn.Rollback()
-	if err != nil {
-		log.Fatal(err)
+	if !deathguild.RunTasks(conf.Concurrency, tasks) {
+		os.Exit(1)
 	}
 }
 

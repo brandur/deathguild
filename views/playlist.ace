@@ -14,7 +14,10 @@
       tr
         td {{.Artist}}
         td {{.Title}}
-        td {{.SpotifyID}}
+        td
+          {{if ne .SpotifyID ""}}
+            a href={{SpotifySongLink .}} {{.SpotifyID}}
+          {{end}}
     {{end}}
 
 

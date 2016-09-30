@@ -139,3 +139,10 @@ func TestSpotifyPlaylistLink(t *testing.T) {
 	assert.Equal(t, "https://open.spotify.com/user/fyrerise/playlist/spotify-id",
 		spotifyPlaylistLink(playlist))
 }
+
+func TestSpotifySongLink(t *testing.T) {
+	song := &deathguild.Song{SpotifyID: "spotify-id"}
+
+	assert.Equal(t, "https://open.spotify.com/track/spotify-id",
+		spotifySongLink(song))
+}

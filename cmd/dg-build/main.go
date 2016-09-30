@@ -12,7 +12,6 @@ import (
 	"path"
 	"strings"
 
-	//"github.com/brandur/sorg/pool"
 	"github.com/brandur/deathguild"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
@@ -339,6 +338,7 @@ func renderTemplate(view, target string, locals map[string]interface{}) error {
 		&ace.Options{FuncMap: template.FuncMap{
 			"PlaylistInfo":        playlistInfo,
 			"SpotifyPlaylistLink": spotifyPlaylistLink,
+			"SpotifySongLink":     spotifySongLink,
 		}})
 	if err != nil {
 		return err
@@ -374,4 +374,8 @@ func renderTemplate(view, target string, locals map[string]interface{}) error {
 func spotifyPlaylistLink(playlist *deathguild.Playlist) string {
 	return "https://open.spotify.com/user/" + conf.SpotifyUser +
 		"/playlist/" + playlist.SpotifyID
+}
+
+func spotifySongLink(song *deathguild.Song) string {
+	return "https://open.spotify.com/track/" + song.SpotifyID
 }

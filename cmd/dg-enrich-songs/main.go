@@ -163,7 +163,7 @@ func runLoop() (bool, error) {
 
 	log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
 		len(songs)-int(numNotFound), numNotFound)
-	return true, nil
+	return false, nil
 }
 
 func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {

@@ -6,6 +6,7 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/brandur/deathguild"
 	"github.com/joeshaw/envdecode"
 )
 
@@ -24,6 +25,11 @@ var conf Conf
 
 func main() {
 	err := envdecode.Decode(&conf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = deathguild.CreateOutputDirs(conf.TargetDir)
 	if err != nil {
 		log.Fatal(err)
 	}

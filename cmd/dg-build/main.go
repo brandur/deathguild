@@ -10,6 +10,7 @@ import (
 
 	//"github.com/brandur/sorg/pool"
 	"github.com/brandur/deathguild"
+	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 	"github.com/yosssi/ace"
@@ -48,13 +49,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = buildIndex()
+	err = deathguild.CreateOutputDirs(conf.TargetDir)
 	if err != nil {
 		log.Fatal(err)
 	}
-}
 
-func buildIndex() error {
 	txn, err := db.Begin()
 	if err != nil {
 		log.Fatal(err)
@@ -62,14 +61,30 @@ func buildIndex() error {
 
 	playlists, err := loadPlaylists(txn)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
+
+	var tasks []*pool.Task
+
+	tasks = append(tasks, pool.NewTask(func() error {
+		return buildIndex(txn, playlists)
+	}))
+
+	for _, playlist := range playlists {
+		tasks = append(tasks, pool.NewTask(func() error {
+			return buildPlaylist(txn, playlist)
+		}))
+	}
+
+	deathguild.RunTasks(conf.Concurrency, tasks)
 
 	err = txn.Rollback()
 	if err != nil {
 		log.Fatal(err)
 	}
+}
 
+func buildIndex(txn *sql.Tx, playlists []*deathguild.Playlist) error {
 	template, err := ace.Load("./layouts/main", "./views/index",
 		&ace.Options{FuncMap: template.FuncMap{
 			"SpotifyPlaylistLink": spotifyPlaylistLink,
@@ -95,6 +110,10 @@ func buildIndex() error {
 		return err
 	}
 
+	return nil
+}
+
+func buildPlaylist(txn *sql.Tx, playlist *deathguild.Playlist) error {
 	return nil
 }
 

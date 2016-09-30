@@ -108,7 +108,7 @@ func main() {
 	}
 
 	if !deathguild.RunTasks(conf.Concurrency, tasks) {
-		os.Exit(1)
+		defer os.Exit(1)
 	}
 }
 

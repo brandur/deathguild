@@ -56,16 +56,15 @@ func main() {
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	for {
-		done, err := runLoop()
+		done, exitCode, err := runLoop()
 		if err != nil {
 			log.Fatal(err)
 		}
 		if done {
+			defer os.Exit(exitCode)
 			break
 		}
 	}
-
-	log.Printf("Finished checking for song IDs")
 }
 
 func artistsToString(artists []spotify.SimpleArtist) string {
@@ -124,10 +123,10 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 	return nil
 }
 
-func runLoop() (bool, error) {
+func runLoop() (bool, int, error) {
 	txn, err := db.Begin()
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 	defer func() {
 		err := txn.Commit()
@@ -140,11 +139,11 @@ func runLoop() (bool, error) {
 	// at once.
 	songs, err := songsNeedingID(txn, 100)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	if len(songs) == 0 {
-		return true, nil
+		return true, 0, nil
 	}
 
 	var tasks []*pool.Task
@@ -158,12 +157,12 @@ func runLoop() (bool, error) {
 	}
 
 	if !deathguild.RunTasks(conf.Concurrency, tasks) {
-		os.Exit(1)
+		return true, 1, nil
 	}
 
 	log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
 		len(songs)-int(numNotFound), numNotFound)
-	return false, nil
+	return false, 0, nil
 }
 
 func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {

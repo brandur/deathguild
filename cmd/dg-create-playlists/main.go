@@ -92,17 +92,16 @@ func main() {
 	}
 
 	for {
-		done, err := runLoop()
+		done, exitCode, err := runLoop()
 		if err != nil {
 			log.Fatal(err)
 		}
 		if done {
+			defer os.Exit(exitCode)
 			break
 		}
 	}
-
 done:
-	log.Printf("Finished creating all playlists")
 }
 
 func createPlaylist(name string) (spotify.ID, error) {
@@ -243,10 +242,10 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) 
 	return playlists, nil
 }
 
-func runLoop() (bool, error) {
+func runLoop() (bool, int, error) {
 	txn, err := db.Begin()
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 	defer func() {
 		err := txn.Commit()
@@ -259,11 +258,11 @@ func runLoop() (bool, error) {
 	// at once.
 	playlists, err := playlistsNeedingID(txn, 100)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	if len(playlists) == 0 {
-		return true, nil
+		return true, 0, nil
 	}
 
 	var tasks []*pool.Task
@@ -276,11 +275,11 @@ func runLoop() (bool, error) {
 	}
 
 	if !deathguild.RunTasks(conf.Concurrency, tasks) {
-		os.Exit(1)
+		return true, 1, nil
 	}
 
 	log.Printf("Created %v Spotify playlist(s)", len(playlists))
-	return false, nil
+	return false, 0, nil
 }
 
 func updatePlaylist(txn *sql.Tx, playlist *deathguild.Playlist) error {

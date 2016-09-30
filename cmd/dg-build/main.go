@@ -73,7 +73,7 @@ func main() {
 	for _, playlist := range playlists {
 		p := playlist
 		tasks = append(tasks, pool.NewTask(func() error {
-			return buildPlaylist(txn, p)
+			return buildPlaylist(p)
 		}))
 	}
 
@@ -101,8 +101,32 @@ func buildIndex(txn *sql.Tx, playlists []*deathguild.Playlist) error {
 	return nil
 }
 
-func buildPlaylist(txn *sql.Tx, playlist *deathguild.Playlist) error {
-	err := renderTemplate(
+func buildPlaylist(playlist *deathguild.Playlist) error {
+	txn, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	err = buildPlaylistInTransaction(txn, playlist)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Rollback()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func buildPlaylistInTransaction(txn *sql.Tx, playlist *deathguild.Playlist) error {
+	err := playlist.FetchSongs(txn)
+	if err != nil {
+		return err
+	}
+
+	err = renderTemplate(
 		path.Join(".", "views", "playlist"),
 		path.Join(conf.TargetDir, "playlists", playlist.FormattedDay()),
 		map[string]interface{}{

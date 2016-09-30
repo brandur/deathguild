@@ -1,6 +1,7 @@
 package deathguild
 
 import (
+	"database/sql"
 	"log"
 	"os"
 	"path"
@@ -28,6 +29,48 @@ type Playlist struct {
 // FormattedDay returns the playlist's date formatted into readable ISO8601.
 func (p *Playlist) FormattedDay() string {
 	return p.Day.Format("2006-01-02")
+}
+
+// FetchSongs populates the playlist's songs collection from the database.
+func (p *Playlist) FetchSongs(txn *sql.Tx) error {
+	rows, err := txn.Query(`
+		SELECT id, artist, title, spotify_checked_at, spotify_id
+		FROM songs
+		WHERE id IN (
+				SELECT songs_id
+				FROM playlists_songs
+				WHERE playlists_id = $1
+				ORDER BY position
+			)`,
+		p.ID,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var song Song
+		var spotifyID *string
+		err = rows.Scan(
+			&song.ID,
+			&song.Artist,
+			&song.Title,
+			&song.SpotifyCheckedAt,
+			&spotifyID,
+		)
+		if err != nil {
+			return err
+		}
+
+		if spotifyID != nil {
+			song.SpotifyID = *spotifyID
+		}
+
+		p.Songs = append(p.Songs, &song)
+	}
+
+	return nil
 }
 
 // Song is an artist/title pair that we've extracted from a playlist.

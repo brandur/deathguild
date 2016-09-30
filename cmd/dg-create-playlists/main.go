@@ -164,7 +164,9 @@ func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 
 	var songIDs []spotify.ID
 	for _, song := range playlist.Songs {
-		songIDs = append(songIDs, spotify.ID(song.SpotifyID))
+		if song.SpotifyID != "" {
+			songIDs = append(songIDs, spotify.ID(song.SpotifyID))
+		}
 	}
 
 	err := client.ReplacePlaylistTracks(userID, playlistID, songIDs...)
@@ -254,37 +256,9 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) 
 	}
 
 	for _, playlist := range playlists {
-		rows, err := txn.Query(`
-			SELECT id, artist, title, spotify_checked_at, spotify_id
-			FROM songs
-			WHERE id IN (
-					SELECT songs_id
-					FROM playlists_songs
-					WHERE playlists_id = $1
-					ORDER BY position
-				)
-				-- only select songs that have a known Spotify ID
-				AND spotify_id IS NOT NULL`,
-			playlist.ID,
-		)
+		err := playlist.FetchSongs(txn)
 		if err != nil {
 			return nil, err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var song deathguild.Song
-			err = rows.Scan(
-				&song.ID,
-				&song.Artist,
-				&song.Title,
-				&song.SpotifyCheckedAt,
-				&song.SpotifyID,
-			)
-			if err != nil {
-				return nil, err
-			}
-			playlist.Songs = append(playlist.Songs, &song)
 		}
 	}
 

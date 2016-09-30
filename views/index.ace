@@ -7,5 +7,5 @@
         a href="/playlists/{{.FormattedDay}}"
           {{.FormattedDay}}
         |  
-        a href={{SpotifyPlaylistLink . }} Spotify
+        a href={{SpotifyPlaylistLink . }} Spotify playlist
     {{end}}

@@ -1,2 +1,4 @@
 = content main
   h1 Death Guild {{.Playlist.FormattedDay}}
+  p
+    a href={{SpotifyPlaylistLink .Playlist}} Spotify

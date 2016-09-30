@@ -19,7 +19,7 @@ import (
 type Conf struct {
 	// DatabaseURL is a connection string for a database used to store
 	// playlist and song information.
-	DatabaseURL string `env:"DATABASE_URL,default=postgres://localhost/deathguild-test?sslmode=disable"`
+	DatabaseURL string `env:"TEST_DATABASE_URL,default=postgres://localhost/deathguild-test?sslmode=disable"`
 }
 
 var tablesToTruncate = []string{

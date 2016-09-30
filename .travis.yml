@@ -9,11 +9,16 @@ sudo: false
 before_install:
   - go get -u github.com/golang/lint/golint
 
+install:
+  - pip install --user awscli
+
 script:
   - make
   - $GOPATH/bin/dg-scraper
-  - $GOPATH/bin/dg-build
   - $GOPATH/bin/dg-enrich-songs
+  - $GOPATH/bin/dg-create-playlists
+  - $GOPATH/bin/dg-build
+  - TARGET_DIR=./public S3_BUCKET=deathguild-playlists make deploy
 
 notifications:
   email:
@@ -30,6 +35,12 @@ notifications:
 
 env:
   global:
+
+    # $AWS_ACCESS_KEY_ID
+    - secure: "RUl/y5seL6VDaq2mfPdhoqcy5SQnWUNJVQ3gVuRQR1MIUsgzj/xv7SjNtZYgoEiMtXvf80yUZadId8IBHZNKRIWjQQoNuTX67WcmzWOjp8n2a+DnntnewgJPHLk056KrOMbqsziLlEG83D1O9CHBTzZN5snSrn451HfajjyPvGueek8g4XxjQvtADQK2oI/mxf5Dv3FFnt/DslsiBiggKoxywRxg2pg9tuVV3bwiQmVotf+o79Qx5i0yaX6TQQv0oT2FvQVHGFA24UJMasLybbx65cWqD6MRVhCbsapD8Qg+ek12Oc4nkwEiAwohkP8a7Bt0i4nxBP1OZTPSJ07Lr8QNpHQrdlZH/69Cdg+f8Wgk8LJBMny753Kn3jodUTIyeu8wd5z/yXodm+CQSAS69BUCONf7dNE6RH3GiHKjhJYmbN7YROu3LRnH96eku2SqKLM0cJgDUTL+BxawnWWuwy2oD25BkoSHgNGZK4wOfTAo6PcjWdTOarcD3g/7T6C82C0b5Ag+Nwyf6XoiJHeGeANwbCke2m6ZidPixBkjJTZ5nc5wOJ7DtgpZ+OvKFE1do05BWG9Rlg5Zg6tmdrHvcxm1KZcCMd5Uf5lPh8/STZGfrqD1hCxy9tmJIBV8SmGz3xgV7/89lHR03hMrA5MEgVvC37LREM76R7HLYRS+u88="
+
+    # $AWS_SECRET_ACCESS_KEY
+    - secure: "c1bqV828vUPa3U62MPGLtY1XryUnWuMe5jMpzvHgajeexqpw5Fi0SYXtN4CUTUjcXEQrgzb41mlwXUXJQFdeF16JLk0JUUedDMVnnNuFC7CT98h/lEAk6M0qEGHx3iT+rfdLlqT5KyLLK3yQGD19H6TUJGoYPNbq42x3zVqg/pBSiGDfOak6idgvDWVrzGOEPIQn9iiUYIYIwlgb6lgMboVY2zg6izuhxedI2gwit/dOtam7yT87jShqz0qMuNq0ZTJGyvyUEUFvz3Ni1qKbqCur6EsRZ/tNTh4oU7pAI827Wcnzfb/5v267xVZNTqSw3KMrl5OyaYvuXpGii0xNajWHTAcx5wZzjNBbOwxbYE57YG3lx+IflD69zF7cCwL2vqOs9L+qPVQQHUx1op7GMd6ulI5Cp43+XcB5HWQ4c4DMCthWZbcRMEBzmwB/l3BlCaMXNehNEFFtn3GOz2fXXWykCdZlFRQ2QhQR0fMp/9d6R5nefi9It8AzJwj88u1u0Cc9PPcwTxpEYlqgCiXnItSQQ8jqpXDOzlB+UpAcf1Bi9OQM2nDDkh/PZiSPUSx5kEJA08VKVTWz54a7UoE3gIXZU2TF0075G9Nsufjo06nyOPei6CYgpIMR8svVCBojpLRoWXUgdhup1Et4yEp91TjfXj1eX1b9LupBEGjU5OE="
 
     # $CLIENT_ID
     - secure: "BSxGvCbpr9mP6u5ePE3K9T+HakDBpTkJ/GNRDfvEn2Oe5wZ1xO1RjWdP2LNBDGIQOIBBWugfbJP+xdTc2yNGLVJ7Po2iAI35BMZxH+kdIpoF9+63+B7lZTbT9ii2bXWBgjaqMKbHnaWLiLOsGZL/l3N07ytcetZsLwiqInYBrHomIM+BIME9m6cAE2Eo01/cSAANeEEvqpc4PRsBLyXZe0QJJBJyjiOy856jcNnTnUyqoNl+UQVnYYGMvcmFTOZJTPqOVo4e1UIuOsSj5IV1c+KTfL3pLjMXvajUHtc/gJ40YeSwW+w4u2PZSV41ANveSNPpA+cxFLfTCDi7J5oTBmqm4IzbGtEtYP2wM1ZYzbh76m+7ke+47kmlS6hORtdatJR8h7nRA7MEZ7OiBhA1nFw/oQjMQs+k93UEFx/PxBH2bG8BPNkc9aFtbahYMqex2AGufSzAJkT9ElCGAvMVLM+DIDD8781hwCUGoHxZJBhvdWonx2+tWyE4H+AfLgmh1p4ppOZ5Rk718q/6BEqwec2s+OcgxagkBnwdj/OiNpu2Y5kSr7dCaKI/ty9kxMhPMy/m+8mpp3688+WJH97SpNQ/Rkun1Wc67Gj7hkffHItmrqpbAolqWqXbF2TZQYHki2S2oni5BsSrubKLF/sr4ObSA4S3F95FfbCEN1/J31o="

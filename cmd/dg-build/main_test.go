@@ -128,7 +128,7 @@ func TestPlaylistInfo(t *testing.T) {
 		SpotifyID: "spotify-id",
 	}
 
-	assert.Equal(t, "2 song(s). 1 song(s) (50.0%) found in Spotify.",
+	assert.Equal(t, "2 songs. 1 songs (50.0%) found in Spotify.",
 		playlistInfo(playlist))
 }
 

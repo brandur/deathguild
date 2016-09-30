@@ -330,7 +330,7 @@ func playlistInfo(playlist *deathguild.Playlist) string {
 
 	percent := float64(numWithSpotifyID) / float64(len(playlist.Songs)) * 100
 
-	return fmt.Sprintf("%v song(s). %v song(s) (%.1f%%) found in Spotify.",
+	return fmt.Sprintf("%v songs. %v songs (%.1f%%) found in Spotify.",
 		len(playlist.Songs), numWithSpotifyID, percent)
 }
 

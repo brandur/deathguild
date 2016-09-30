@@ -11,6 +11,8 @@ before_install:
 
 script:
   - make
+  - $(GOPATH)/bin/dg-scraper
+  - $(GOPATH)/bin/dg-build
 
 notifications:
   email:

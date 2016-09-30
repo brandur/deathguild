@@ -1,4 +1,4 @@
-all: clean install test vet lint check-gofmt build
+all: clean install test vet lint check-gofmt
 
 build:
 	$(GOPATH)/bin/dg-build

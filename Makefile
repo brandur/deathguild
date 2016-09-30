@@ -25,8 +25,11 @@ lint:
 serve:
 	$(GOPATH)/bin/dg-serve
 
+# Read from env or fall back.
+TEST_DATABASE_URL ?= postgres://localhost/deathguild-test
+
 test:
-	psql postgres://localhost/deathguild-test < db/structure.sql > /dev/null
+	psql $(TEST_DATABASE_URL) < db/structure.sql > /dev/null
 	go test $(shell go list ./... | egrep -v '/vendor/')
 
 vet:

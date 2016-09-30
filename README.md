@@ -27,13 +27,13 @@ dg-scraper
 # tags songs with their Spotify IDs
 dg-enrich-songs
 
-# creates Spotify playlists mirrors
+# creates Spotify playlists (idempotent, so safe to run many times)
 dg-create-playlists
 
 # builds a static site linking the new playlists
 dg-build
 
-# serves the built static site
+# serves the built static site so it can be viewed locally
 dg-serve
 
 # deploy the built site to S3
@@ -56,7 +56,7 @@ Run the tests with:
 
 ## Vendoring Dependencies
 
-I used govendor to pull in dependencies. New ones can be vendored using these
+Dependencies are managed with govendor. New ones can be vendored using these
 commands:
 
     go get -u github.com/kardianos/govendor
@@ -76,6 +76,7 @@ rebuilds `master` periodically.
 * S3 bucket: `deathguild-playlists`
 * Production database: `PRODUCTION_URL` on app `deathguild-playlists`.
 * Test database: `TEST_URL` on app `deathguild-playlists`.
+* Lambda rebuild period: 4 hours
 
 [intrinsic]: https://brandur.org/aws-intrinsic-static
 [site]: https://deathguild.brandur.org

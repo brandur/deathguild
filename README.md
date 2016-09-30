@@ -20,6 +20,12 @@ dg-enrich-songs
 
 # creates Spotify playlists mirrors
 dg-create-playlists
+
+# builds a static site linking the new playlists
+dg-build
+
+# serves the built static site
+dg-serve
 ```
 
 ## Vendoring Dependencies

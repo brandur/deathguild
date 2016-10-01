@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"os"
 	"testing"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
 	tt "github.com/brandur/deathguild/testing"
 	assert "github.com/stretchr/testify/require"
@@ -68,7 +68,7 @@ func TestUpsertPlaylistAndSongs(t *testing.T) {
 	).Scan(&playlistID)
 	assert.NoError(t, err)
 
-	log.Printf("New playlist ID is %v", playlistID)
+	log.Debugf("New playlist ID is %v", playlistID)
 	assert.NotEqual(t, 0, playlistID)
 
 	for _, song := range songs {
@@ -81,7 +81,7 @@ func TestUpsertPlaylistAndSongs(t *testing.T) {
 		).Scan(&songID)
 		assert.NoError(t, err)
 
-		log.Printf("New song ID for %v - %v is %v",
+		log.Debugf("New song ID for %v - %v is %v",
 			song.Artist, song.Title, songID)
 		assert.NotEqual(t, 0, songID)
 
@@ -94,7 +94,7 @@ func TestUpsertPlaylistAndSongs(t *testing.T) {
 		).Scan(&playlistSongID)
 		assert.NoError(t, err)
 
-		log.Printf("New playlist/song join ID for %v - %v is %v",
+		log.Debugf("New playlist/song join ID for %v - %v is %v",
 			song.Artist, song.Title, playlistSongID)
 		assert.NotEqual(t, 0, songID)
 	}

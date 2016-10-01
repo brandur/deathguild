@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
@@ -58,7 +58,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Requesting index at: %v", indexURL)
+	log.Infof("Requesting index at: %v", indexURL)
 	resp, err := http.Get(indexURL)
 	if err != nil {
 		log.Fatal(err)
@@ -108,7 +108,7 @@ func scrapeIndex(r io.Reader) ([]PlaylistLink, error) {
 		return nil, outErr
 	}
 
-	log.Printf("Found %v playlist(s) in index", len(links))
+	log.Infof("Found %v playlist(s) in index", len(links))
 	return links, nil
 }
 
@@ -139,11 +139,11 @@ func handlePlaylist(link PlaylistLink) error {
 	).Scan(&playlistID)
 
 	if playlistID != 0 {
-		log.Printf("Playlist %v already handled; skipping", day)
+		log.Debugf("Playlist %v already handled; skipping", day)
 		return nil
 	}
 
-	log.Printf("Requesting playlist at: %v", darkdbURL+"/"+link)
+	log.Debugf("Requesting playlist at: %v", darkdbURL+"/"+link)
 	resp, err := http.Get(darkdbURL + "/" + string(link))
 	if err != nil {
 		return err
@@ -162,7 +162,7 @@ func handlePlaylist(link PlaylistLink) error {
 
 	// be kind and rate limit our requests
 	t := 1 + rand.Float32()
-	log.Printf("Sleeping %v seconds", t)
+	log.Debugf("Sleeping %v seconds", t)
 	time.Sleep(time.Duration(t) * time.Second)
 
 	return nil
@@ -214,7 +214,7 @@ func upsertPlaylistAndSongs(txn *sql.Tx, day string,
 		}
 	}
 
-	log.Printf("Inserted records for %v song(s)", len(songs))
+	log.Infof("Inserted records for %v song(s)", len(songs))
 	return nil
 }
 
@@ -243,6 +243,6 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 		return nil, outErr
 	}
 
-	log.Printf("Found playlist of %v song(s)", len(songs))
+	log.Infof("Found playlist of %v song(s)", len(songs))
 	return songs, nil
 }

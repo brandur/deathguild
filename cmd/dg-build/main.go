@@ -7,11 +7,11 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
@@ -177,7 +177,7 @@ func buildPlaylistInTransaction(txn *sql.Tx, playlist *deathguild.Playlist) erro
 // Note that this function was copied wholesale from sorg and should probably
 // be shared between projects.
 func compileJavascripts(inPath, outPath string) error {
-	log.Printf("Building: %v", outPath)
+	log.Infof("Building: %v", outPath)
 
 	javascriptInfos, err := ioutil.ReadDir(inPath)
 	if err != nil {
@@ -195,7 +195,7 @@ func compileJavascripts(inPath, outPath string) error {
 			continue
 		}
 
-		log.Printf("Including: %v", javascriptInfo.Name())
+		log.Debugf("Including: %v", javascriptInfo.Name())
 
 		inFile, err := os.Open(path.Join(inPath, javascriptInfo.Name()))
 		if err != nil {
@@ -247,7 +247,7 @@ func compileStylesheets(inPath, outPath string) error {
 			continue
 		}
 
-		log.Printf("Including: %v", stylesheetInfo.Name())
+		log.Debugf("Including: %v", stylesheetInfo.Name())
 
 		inFile, err := os.Open(path.Join(inPath, stylesheetInfo.Name()))
 		if err != nil {

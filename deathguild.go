@@ -2,11 +2,11 @@ package deathguild
 
 import (
 	"database/sql"
-	"log"
 	"os"
 	"path"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/sorg/pool"
 )
 
@@ -132,7 +132,7 @@ func CreateOutputDirs(targetDir string) error {
 // if all tasks succeeded. If a false is returned, the caller should consider
 // exiting with non-zero status.
 func RunTasks(concurrency int, tasks []*pool.Task) bool {
-	log.Printf("Running %v task(s) with concurrency %v",
+	log.Infof("Running %v task(s) with concurrency %v",
 		len(tasks), concurrency)
 
 	p := pool.NewPool(tasks, concurrency)
@@ -141,11 +141,11 @@ func RunTasks(concurrency int, tasks []*pool.Task) bool {
 	var numErrors int
 	for _, task := range p.Tasks {
 		if task.Err != nil {
-			log.Printf("Error: %v", task.Err.Error())
+			log.Errorf("Error: %v", task.Err.Error())
 			numErrors++
 		}
 		if numErrors >= 10 {
-			log.Printf("Too many errors.")
+			log.Errorf("Too many errors.")
 			break
 		}
 	}

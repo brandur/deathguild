@@ -16,10 +16,10 @@ install:
 # before the next command is issued.
 script:
   - make &&
-    $GOPATH/bin/dg-scrape &&
-    $GOPATH/bin/dg-enrich-songs &&
-    $GOPATH/bin/dg-create-playlists &&
-    $GOPATH/bin/dg-build &&
+    make scrape &&
+    make enrich-songs &&
+    make create-playlists &&
+    TARGET_DIR=./public make build &&
     TARGET_DIR=./public S3_BUCKET=deathguild-playlists make deploy
 
 # Unfortunately we cannot dump the database currently because of a version

@@ -10,6 +10,11 @@ clean:
 	mkdir -p public/
 	rm -f -r public/*
 
+create-playlists:
+ifdef REFRESH_TOKEN
+	$(GOPATH)/bin/dg-create-playlists
+endif
+
 # Long TTL (in seconds) to set on an object in S3. This is suitable for items
 # that we expect to only have to invalidate very rarely like images. Although
 # we set it for all assets, those that are expected to change more frequently
@@ -74,6 +79,11 @@ ifdef DATABASE_URL
 	psql $(DATABASE_URL) < $(TARGET_DIR)/deathguild.sql
 endif
 
+enrich-songs:
+ifdef REFRESH_TOKEN
+	$(GOPATH)/bin/dg-enrich-songs
+endif
+
 install:
 	go install $(shell go list ./... | egrep -v '/vendor/')
 
@@ -85,6 +95,9 @@ install:
 # to the entire command.
 lint:
 	go list ./... | egrep -v '/vendor/' | sed "s|^github\.com/brandur/sorg|.|" | xargs -I{} -n1 sh -c '$(GOPATH)/bin/golint -set_exit_status {} || exit 255'
+
+scrape:
+	$(GOPATH)/bin/dg-scrape
 
 serve:
 	$(GOPATH)/bin/dg-serve

@@ -12,6 +12,9 @@ dist: trusty
 # possible to do so.
 sudo: required
 
+addons:
+  postgresql: "9.5"
+
 before_install:
   - go get -u github.com/golang/lint/golint
 
@@ -39,12 +42,6 @@ script:
 notifications:
   email:
     on_success: never
-
-# Removed for now because Travis _still_ doesn't support Postgres 9.5 and we're
-# using upsert. Hopefully one day we can go back.
-#
-#addons:
-#  postgresql: "9.5"
 
 env:
   global:

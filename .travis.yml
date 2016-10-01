@@ -57,6 +57,17 @@ env:
     - TARGET_DIR=./public
     - TEST_DATABASE_URL=postgres://localhost/deathguild-test?sslmode=disable
 
+    # Variables in this section are secret and encrypted with something like:
+    #
+    #     travis encrypt CLIENT_ID=...
+    #
+    # Note that their actual values are only available on builds on the master
+    # branch which means that we'll only ever update Spotify or deploy when
+    # changes appear there. The make tasks in our build steps are gated so that
+    # they're smart enough to just fall through if the secrets that they need
+    # to run are not available (for example, `make create-playlists` looks for
+    # a Spotify `$REFRESH_TOKEN`).
+
     # $AWS_ACCESS_KEY_ID
     - secure: "RUl/y5seL6VDaq2mfPdhoqcy5SQnWUNJVQ3gVuRQR1MIUsgzj/xv7SjNtZYgoEiMtXvf80yUZadId8IBHZNKRIWjQQoNuTX67WcmzWOjp8n2a+DnntnewgJPHLk056KrOMbqsziLlEG83D1O9CHBTzZN5snSrn451HfajjyPvGueek8g4XxjQvtADQK2oI/mxf5Dv3FFnt/DslsiBiggKoxywRxg2pg9tuVV3bwiQmVotf+o79Qx5i0yaX6TQQv0oT2FvQVHGFA24UJMasLybbx65cWqD6MRVhCbsapD8Qg+ek12Oc4nkwEiAwohkP8a7Bt0i4nxBP1OZTPSJ07Lr8QNpHQrdlZH/69Cdg+f8Wgk8LJBMny753Kn3jodUTIyeu8wd5z/yXodm+CQSAS69BUCONf7dNE6RH3GiHKjhJYmbN7YROu3LRnH96eku2SqKLM0cJgDUTL+BxawnWWuwy2oD25BkoSHgNGZK4wOfTAo6PcjWdTOarcD3g/7T6C82C0b5Ag+Nwyf6XoiJHeGeANwbCke2m6ZidPixBkjJTZ5nc5wOJ7DtgpZ+OvKFE1do05BWG9Rlg5Zg6tmdrHvcxm1KZcCMd5Uf5lPh8/STZGfrqD1hCxy9tmJIBV8SmGz3xgV7/89lHR03hMrA5MEgVvC37LREM76R7HLYRS+u88="
 

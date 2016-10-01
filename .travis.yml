@@ -16,7 +16,7 @@ install:
 # before the next command is issued.
 script:
   - make &&
-    $GOPATH/bin/dg-scraper &&
+    $GOPATH/bin/dg-scrape &&
     $GOPATH/bin/dg-enrich-songs &&
     $GOPATH/bin/dg-create-playlists &&
     $GOPATH/bin/dg-build &&

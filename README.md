@@ -22,7 +22,7 @@ cp .env.sample .env
 export $(cat .env)
 
 # creates a database of all playlist/song information
-dg-scraper
+dg-scrape
 
 # tags songs with their Spotify IDs
 dg-enrich-songs

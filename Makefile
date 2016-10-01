@@ -74,6 +74,13 @@ ifdef DATABASE_URL
 	pg_dump -f $(TARGET_DIR)/deathguild.sql $(DATABASE_URL)
 endif
 
+# Fetches the current database dump from S3. Note that there is no symmetric
+# "put" task because that's handled by `make deploy` and unlike this one (that
+# accesses the dump on a public URL), deployment is only done from the master
+# branch when AWS keys are available.
+database-fetch: check-target-dir
+	curl -o $(TARGET_DIR)/deathguild.sql https://deathguild-playlists.s3.amazonaws.com/deathguild.sql
+
 database-restore: check-target-dir
 ifdef DATABASE_URL
 	psql $(DATABASE_URL) < $(TARGET_DIR)/deathguild.sql

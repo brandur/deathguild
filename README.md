@@ -67,10 +67,9 @@ commands:
 
 The site is deployed according to the [AWS Instrinsic Static Site][intrinsic]
 with AWS CloudFlare and S3 and deployed automatically from Travis. Music
-metadata is retrieved from Spotify's API. State is maintained inside of a
-Postgres database on Heroku. Connection strings are in `.travis.yml` and
-encrypted with `travis encrypt DATABASE_URL=...`. An AWS Lambda function
-rebuilds `master` periodically.
+metadata is retrieved from Spotify's API. State is maintained inside of an
+ephemeral Travis Postgres that's loaded from an S3 dump when a build starts and
+dumped when it finishes. An AWS Lambda function rebuilds `master` periodically.
 
 * Public URL: https://deathguild.brandur.org
 * CloudFront distribution ID: `ENEEJ6NCB4DP`

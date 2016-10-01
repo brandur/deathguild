@@ -18,6 +18,7 @@ script:
   - $GOPATH/bin/dg-enrich-songs
   - $GOPATH/bin/dg-create-playlists
   - $GOPATH/bin/dg-build
+  - TARGET_DIR=./public make dump-database
   - TARGET_DIR=./public S3_BUCKET=deathguild-playlists make deploy
 
 notifications:

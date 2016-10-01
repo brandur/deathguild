@@ -62,6 +62,13 @@ else
 	# No AWS access key. Skipping deploy.
 endif
 
+# Produces a database backup. This is so that we can throw one in S3 during
+# deployment in case we lose a database or a database provider.
+dump-database: check-target-dir
+ifdef DATABASE_URL
+	pg_dump $(DATABASE_URL) > $(TARGET_DIR)/deathguild.sql
+endif
+
 install:
 	go install $(shell go list ./... | egrep -v '/vendor/')
 

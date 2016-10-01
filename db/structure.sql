@@ -1,3 +1,16 @@
+--
+-- structure.sql
+--
+-- This file describes the structure of the Postgres database used by the
+-- application to track its state across runs.
+--
+-- The overriding directive here is to take advantage of the fact that we're on
+-- a strong RDMS. In all cases try to design the schema to make constraints as
+-- strong as possible to reduce the likelihood of inconsistencies in our data.
+-- For example, use `NOT NULL`, `UNIQUE`, and `REFERENCES` everywhere that it's
+-- possible.
+--
+
 BEGIN;
 
 DROP TABLE IF EXISTS playlists CASCADE;
@@ -7,6 +20,9 @@ DROP TABLE IF EXISTS songs CASCADE;
 --
 -- playlists
 --
+-- Each playlist is a list of songs that were played at a single night of Death
+-- Guild.
+--
 CREATE TABLE playlists (
     id bigserial PRIMARY KEY,
     day date NOT NULL UNIQUE,
@@ -15,6 +31,11 @@ CREATE TABLE playlists (
 
 --
 -- songs
+--
+-- Each song is a single artist/title combination. We can't guarantee that
+-- there aren't duplicates in here that may have slightly different lettering
+-- or parenthesis combinations, and basically depend on the original Death
+-- Guild source for good hygiene.
 --
 CREATE TABLE songs (
     id bigserial PRIMARY KEY,
@@ -30,6 +51,9 @@ ALTER TABLE songs
 
 --
 -- playlists_songs
+--
+-- Associates playlists with songs and includes a position to track the order
+-- of songs played.
 --
 CREATE TABLE playlists_songs (
     id bigserial PRIMARY KEY,

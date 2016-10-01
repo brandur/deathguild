@@ -66,7 +66,7 @@ endif
 # deployment in case we lose a database or a database provider.
 dump-database: check-target-dir
 ifdef DATABASE_URL
-	pg_dump $(DATABASE_URL) > $(TARGET_DIR)/deathguild.sql
+	pg_dump -f $(TARGET_DIR)/deathguild.sql $(DATABASE_URL)
 endif
 
 install:

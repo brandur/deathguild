@@ -12,14 +12,16 @@ before_install:
 install:
   - pip install --user awscli
 
+# Note we've changed the script with &&s so that all steps need to succeed
+# before the next command is issued.
 script:
-  - make
-  - $GOPATH/bin/dg-scraper
-  - $GOPATH/bin/dg-enrich-songs
-  - $GOPATH/bin/dg-create-playlists
-  - $GOPATH/bin/dg-build
-  - TARGET_DIR=./public make dump-database
-  - TARGET_DIR=./public S3_BUCKET=deathguild-playlists make deploy
+  - make &&
+    $GOPATH/bin/dg-scraper &&
+    $GOPATH/bin/dg-enrich-songs &&
+    $GOPATH/bin/dg-create-playlists &&
+    $GOPATH/bin/dg-build &&
+    TARGET_DIR=./public make dump-database &&
+    TARGET_DIR=./public S3_BUCKET=deathguild-playlists make deploy
 
 notifications:
   email:

@@ -64,9 +64,14 @@ endif
 
 # Produces a database backup. This is so that we can throw one in S3 during
 # deployment in case we lose a database or a database provider.
-dump-database: check-target-dir
+database-dump: check-target-dir
 ifdef DATABASE_URL
 	pg_dump -f $(TARGET_DIR)/deathguild.sql $(DATABASE_URL)
+endif
+
+database-restore: check-target-dir
+ifdef DATABASE_URL
+	psql $(DATABASE_URL) < $(TARGET_DIR)/deathguild.sql
 endif
 
 install:

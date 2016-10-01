@@ -55,6 +55,22 @@ Run the tests with:
     createdb deathguild-test
     make test
 
+## Databases
+
+Deployments occur using ephmeral Postgres databases that last only as long as
+the build does. However, builds dump the latest database state back into S3
+after they finish, so it's relatively easy to 
+
+``` sh
+export DATABASE_URL=postgres://localhost/deathguild
+export TARGET_DIR=./public
+
+createdb deathguild
+mkdir -p $TARGET_DIR
+make database-fetch
+make database-restore
+```
+
 ## Vendoring Dependencies
 
 Dependencies are managed with govendor. New ones can be vendored using these
@@ -74,8 +90,7 @@ dumped when it finishes. An AWS Lambda function rebuilds `master` periodically.
 * Public URL: https://deathguild.brandur.org
 * CloudFront distribution ID: `ENEEJ6NCB4DP`
 * S3 bucket: `deathguild-playlists`
-* Production database: `PRODUCTION_URL` on app `deathguild-playlists`.
-* Test database: `TEST_URL` on app `deathguild-playlists`.
+* Database dump: `s3://deathguild-playlists/deathguild.sql`
 * Lambda rebuild period: 4 hours
 * Spotify account: `fyrerise`
 

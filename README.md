@@ -45,6 +45,7 @@ make deploy
 
 A `Procfile` provides a watch/rebuild/serve loop for iterating on the site:
 
+    go get -u github.com/ddollar/forego
     forego start
 
 ## Testing

@@ -20,8 +20,12 @@ script:
     $GOPATH/bin/dg-enrich-songs &&
     $GOPATH/bin/dg-create-playlists &&
     $GOPATH/bin/dg-build &&
-    TARGET_DIR=./public make dump-database &&
     TARGET_DIR=./public S3_BUCKET=deathguild-playlists make deploy
+
+# Unfortunately we cannot dump the database currently because of a version
+# mismatch between Travis (9.4) and what we require (9.5). Add this back into
+# the build steps above after Travis upgrades. If indeed that _ever_ happens.
+#TARGET_DIR=./public make dump-database
 
 notifications:
   email:

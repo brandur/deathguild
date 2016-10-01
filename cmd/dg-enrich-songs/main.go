@@ -3,12 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"sync/atomic"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
@@ -90,7 +90,7 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 	song.SpotifyCheckedAt = time.Now()
 
 	if len(res.Tracks.Tracks) < 1 {
-		log.Printf("Song not found: %+v", song)
+		log.Debugf("Song not found: %+v", song)
 		atomic.AddInt64(numNotFound, 1)
 
 		err = updateSong(txn, song)
@@ -103,7 +103,7 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 
 	track := res.Tracks.Tracks[0]
 
-	log.Printf("Got track ID: %v (original: %v - %v) (Spotify: %v - %v)",
+	log.Debugf("Got track ID: %v (original: %v - %v) (Spotify: %v - %v)",
 		string(track.ID),
 		song.Artist, song.Title,
 		artistsToString(track.Artists), track.Name)
@@ -117,7 +117,7 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 
 	// be kind and rate limit our requests
 	t := rand.Float32()
-	log.Printf("Sleeping %v seconds", t)
+	log.Debugf("Sleeping %v seconds", t)
 	time.Sleep(time.Duration(t) * time.Second)
 
 	return nil
@@ -160,7 +160,7 @@ func runLoop() (bool, int, error) {
 		return true, 1, nil
 	}
 
-	log.Printf("Retrieved %v Spotify ID(s); failed to find %v",
+	log.Infof("Retrieved %v Spotify ID(s); failed to find %v",
 		len(songs)-int(numNotFound), numNotFound)
 	return false, 0, nil
 }
@@ -197,7 +197,7 @@ func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
 		songs = append(songs, &song)
 	}
 
-	log.Printf("Found %v songs needing Spotify IDs", len(songs))
+	log.Infof("Found %v songs needing Spotify IDs", len(songs))
 	return songs, nil
 }
 

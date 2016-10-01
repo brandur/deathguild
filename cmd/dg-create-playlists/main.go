@@ -3,9 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
@@ -110,7 +110,7 @@ func createPlaylist(name string) (spotify.ID, error) {
 		return spotify.ID(""), err
 	}
 
-	log.Printf(`Created playlist: "%v"`, name)
+	log.Debugf(`Created playlist: "%v"`, name)
 	return playlist.SimplePlaylist.ID, nil
 }
 
@@ -127,7 +127,7 @@ func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 			return err
 		}
 	} else {
-		log.Printf(`Found cached playlist: "%v" (ID %v)`, name, playlistID)
+		log.Debugf(`Found cached playlist: "%v" (ID %v)`, name, playlistID)
 	}
 
 	var songIDs []spotify.ID
@@ -148,7 +148,7 @@ func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 		return err
 	}
 
-	log.Printf(`Updated playlist: "%v" (ID %v) with %v song(s)`,
+	log.Debugf(`Updated playlist: "%v" (ID %v) with %v song(s)`,
 		name, playlistID, len(playlist.Songs))
 	return nil
 }
@@ -198,7 +198,7 @@ func getPlaylistMap() (map[string]spotify.ID, error) {
 		offset += len(page.Playlists)
 	}
 
-	log.Printf("Cached %v playlist(s)", len(playlistMap))
+	log.Infof("Cached %v playlist(s)", len(playlistMap))
 	return playlistMap, nil
 }
 
@@ -238,7 +238,7 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) 
 		}
 	}
 
-	log.Printf("Found %v playlist(s) needing Spotify IDs", len(playlists))
+	log.Infof("Found %v playlist(s) needing Spotify IDs", len(playlists))
 	return playlists, nil
 }
 
@@ -278,7 +278,7 @@ func runLoop() (bool, int, error) {
 		return true, 1, nil
 	}
 
-	log.Printf("Created %v Spotify playlist(s)", len(playlists))
+	log.Infof("Created %v Spotify playlist(s)", len(playlists))
 	return false, 0, nil
 }
 

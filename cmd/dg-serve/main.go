@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"path"
 	"strconv"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
 	"github.com/joeshaw/envdecode"
 )
@@ -41,8 +41,8 @@ func main() {
 }
 
 func serve(targetDir string, port int) error {
-	log.Printf("Serving '%v' on port %v", path.Clean(targetDir), port)
-	log.Printf("Open browser to: http://localhost:%v/", port)
+	log.Infof("Serving '%v' on port %v", path.Clean(targetDir), port)
+	log.Infof("Open browser to: http://localhost:%v/", port)
 	handler := http.FileServer(http.Dir(targetDir))
 	return http.ListenAndServe(":"+strconv.Itoa(port), handler)
 }

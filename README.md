@@ -78,6 +78,7 @@ rebuilds `master` periodically.
 * Production database: `PRODUCTION_URL` on app `deathguild-playlists`.
 * Test database: `TEST_URL` on app `deathguild-playlists`.
 * Lambda rebuild period: 4 hours
+* Spotify account: `fyrerise`
 
 ## Notes
 

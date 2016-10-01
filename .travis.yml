@@ -3,8 +3,17 @@ language: go
 go:
   - 1.7
 
-# magic word to use faster/newer container-based architecture
-sudo: false
+# specified explicitly so we can we can get Postgres 9.5
+dist: trusty
+
+# Changed to "required" so we can get access to Postgres 9.5, which is not
+# available in container environments (see travis-ci/travis-ci#4264). This will
+# result in slower builds so we should changed back to "false" as soon as it's
+# possible to do so.
+sudo: required
+
+addons:
+  postgresql: "9.5"
 
 before_install:
   - go get -u github.com/golang/lint/golint
@@ -12,36 +21,41 @@ before_install:
 install:
   - pip install --user awscli
 
+before_script:
+  - psql -U postgres -c 'CREATE DATABASE "deathguild";'
+  - psql -U postgres -c 'CREATE DATABASE "deathguild-test";'
+
 # Note we've changed the script with &&s so that all steps need to succeed
 # before the next command is issued.
+#
+# Note that many build steps depend on the presence of a Postgres database to
+# work. We fetch the latest state of our database from S3 when the build
+# begins, load it into an ephemeral Travis-based Postgres, and then dump its
+# state after the build finishes. If this is the master branch, the new state
+# will be put back into S3 during the deployment step so that the next build
+# can access it.
 script:
-  - make &&
+  - mkdir $TARGET_DIR &&
+    make &&
+    make database-fetch &&
+    make database-restore &&
     make scrape &&
     make enrich-songs &&
     make create-playlists &&
-    TARGET_DIR=./public make build &&
-    TARGET_DIR=./public S3_BUCKET=deathguild-playlists make deploy
-
-# Unfortunately we cannot dump the database currently because of a version
-# mismatch between Travis (9.4) and what we require (9.5). Add this back into
-# the build steps above after Travis upgrades. If indeed that _ever_ happens.
-#TARGET_DIR=./public make database-dump
+    make database-dump &&
+    make build &&
+    make deploy
 
 notifications:
   email:
     on_success: never
 
-# Removed for now because Travis _still_ doesn't support Postgres 9.5 and we're
-# using upsert. Hopefully one day we can go back.
-#
-#addons:
-#  postgresql: "9.5"
-#
-#before_script:
-#  - psql -U postgres -c 'CREATE DATABASE "deathguild-test";'
-
 env:
   global:
+    - DATABASE_URL=postgres://localhost/deathguild?sslmode=disable
+    - S3_BUCKET=deathguild-playlists
+    - TARGET_DIR=./public
+    - TEST_DATABASE_URL=postgres://localhost/deathguild-test?sslmode=disable
 
     # $AWS_ACCESS_KEY_ID
     - secure: "RUl/y5seL6VDaq2mfPdhoqcy5SQnWUNJVQ3gVuRQR1MIUsgzj/xv7SjNtZYgoEiMtXvf80yUZadId8IBHZNKRIWjQQoNuTX67WcmzWOjp8n2a+DnntnewgJPHLk056KrOMbqsziLlEG83D1O9CHBTzZN5snSrn451HfajjyPvGueek8g4XxjQvtADQK2oI/mxf5Dv3FFnt/DslsiBiggKoxywRxg2pg9tuVV3bwiQmVotf+o79Qx5i0yaX6TQQv0oT2FvQVHGFA24UJMasLybbx65cWqD6MRVhCbsapD8Qg+ek12Oc4nkwEiAwohkP8a7Bt0i4nxBP1OZTPSJ07Lr8QNpHQrdlZH/69Cdg+f8Wgk8LJBMny753Kn3jodUTIyeu8wd5z/yXodm+CQSAS69BUCONf7dNE6RH3GiHKjhJYmbN7YROu3LRnH96eku2SqKLM0cJgDUTL+BxawnWWuwy2oD25BkoSHgNGZK4wOfTAo6PcjWdTOarcD3g/7T6C82C0b5Ag+Nwyf6XoiJHeGeANwbCke2m6ZidPixBkjJTZ5nc5wOJ7DtgpZ+OvKFE1do05BWG9Rlg5Zg6tmdrHvcxm1KZcCMd5Uf5lPh8/STZGfrqD1hCxy9tmJIBV8SmGz3xgV7/89lHR03hMrA5MEgVvC37LREM76R7HLYRS+u88="
@@ -55,11 +69,5 @@ env:
     # $CLIENT_SECRET
     - secure: "BSxGvCbpr9mP6u5ePE3K9T+HakDBpTkJ/GNRDfvEn2Oe5wZ1xO1RjWdP2LNBDGIQOIBBWugfbJP+xdTc2yNGLVJ7Po2iAI35BMZxH+kdIpoF9+63+B7lZTbT9ii2bXWBgjaqMKbHnaWLiLOsGZL/l3N07ytcetZsLwiqInYBrHomIM+BIME9m6cAE2Eo01/cSAANeEEvqpc4PRsBLyXZe0QJJBJyjiOy856jcNnTnUyqoNl+UQVnYYGMvcmFTOZJTPqOVo4e1UIuOsSj5IV1c+KTfL3pLjMXvajUHtc/gJ40YeSwW+w4u2PZSV41ANveSNPpA+cxFLfTCDi7J5oTBmqm4IzbGtEtYP2wM1ZYzbh76m+7ke+47kmlS6hORtdatJR8h7nRA7MEZ7OiBhA1nFw/oQjMQs+k93UEFx/PxBH2bG8BPNkc9aFtbahYMqex2AGufSzAJkT9ElCGAvMVLM+DIDD8781hwCUGoHxZJBhvdWonx2+tWyE4H+AfLgmh1p4ppOZ5Rk718q/6BEqwec2s+OcgxagkBnwdj/OiNpu2Y5kSr7dCaKI/ty9kxMhPMy/m+8mpp3688+WJH97SpNQ/Rkun1Wc67Gj7hkffHItmrqpbAolqWqXbF2TZQYHki2S2oni5BsSrubKLF/sr4ObSA4S3F95FfbCEN1/J31o="
 
-    # $DATABASE_URL
-    - secure: "I29o6f6LYqCPRZ7rDsQEu3qmO4xOCTnLKSqDkYUmcP/KEwUufnzK9rf1+3u/oAaOod7rR2vWukrblsHdeZ69dbxabJQv91TU3OYWSjsB2X4Z5uhP8vxw2fqNawZIlh8jRdyqrEY/ovseZjTUTETNHl4XhgPhiujFWk16wLWoHklJ8A0OvrgXrqobd59v2vH3IaXgHbsNJgF88tBR6nr4gZAd60UdpjLPfT+uY7w6h18M8Dgvgy3iFhlqZAvH2JFeb/stjlXTsgujKwK2Rq2/Gv0OmNrsq3VT/sVbEjaKuetK4xkR1W6CfmZgkP1CljcwMRJDKzKEYwMaWZlR49cXXISme7sp0VMqgDWgWNfJCgNybplV051TNwgx0+kB+v2JvGIlGllUs0jsHnG/9TrZ8L/23IzmwgTUF2see0fUQf0+AEapN3VOckj10+IQDWEDkd31NhIG1/0hFat3b3c4N/tsrOfiodFU4KnW3buUDwzYESE3PDjgCA84s7IOlfFaPupedGmIFNsKGIq3ZftZ4H/Y8JVj8sBfuX92G+ZBy5RiaQF/RCnppmUmFXLx/As83f4yV/byWxyCQbUd2GgxukWOLCs3I5BzytLV0bTlg2PzqyB96g+PAJbAGnIN6Ho5d0CzXZ+lEzeK7XNWkNO+bFg9xgjph/r+Brp/GyY75tg="
-
     # $REFRESH_TOKEN
     - secure: "sjg4v85fo63uQhW07GLcEOY0cR5wiicXsuhg80q6hno5gElRo3CztOpjMY5d4+Q4W5AB8ciQkXCkJUwj2KPvgppXXAyR4+CHXQhUau7Prht+qEF2UJ3LGb8LVtUFKYH8j1AjEikW2AgFtatQLcsB1N46NKwDJNqQ+E7eH+z73ixOc52F7wRaVDfYCcu1gmq4bicovir4S+dpioyV0tKXWNnY4KbTGr9CGnq5MzAIrWa3MY418fERzqyrGpT1PEiL4Yun4iqPuzUW54HQAmWGsDBkfyL9rQD3EIs8E0qvw6MAcWGt8YDWsUWh1QT8xWFRPsPnLd4FnoFmg6oEDIrnI/wKyyv3GJULLev0p403P6JIXZhu9Gc+9nPRvejcwrvP6/7GSUhJWe47ovidtx3hmqzttanmtXVH/HXTeyF6Ci5+gzrPUo8SmK3YjIM5S7vnTUnbsHk7yDuQP2EOR0CcEHpgD3yuAN8ugUt+O53RpUWoQrRXl/GuKYqvVAM3eoXNOPgthiU3valaP5lAGymii9ATN7tetMKiqM4zQAGcdO6OGyi2iVnw0i7mNI37O7crhExKrNq5rS3KMkyaGJBiBU/RArEwl+zAK2z0Tn8ERV619LM33Vh159Nh/xdYW0AxI+94G3qGzbgkrpOZfmanKpplBDXdG+00Yabqf6bf0Zg="
-
-    # $TEST_DATABASE_URL
-    - secure: "KcKK8xugyTfHpOgRb+DCysnqsA97uSoEKjx+ExnUQ6CAXFYdR9W3zNRGG4Hyg3orziZpCI5DtN/IM3+inzTSvyAAU9WC7kYJJryO8gB6Yg/h0qbVlutVo9daGsvALymfJQRw2XlgeBIWJExvmI0du9f0WlP1mD+wiK5cgkfO3LJd7wjFPbFvp90Z6c4FyaS0N7lHqv8aPuDz6J5Zo2QUvDDhLJH0mPMynt7TJdAnv1idDdm2ORYLXFr0UQCA1ORP/7RNDMv9U+nkZuHus0g2oSPTzCTVTZkCimKW4fbLl6o+swj5ESpVRD0bkIg8veOnaVQxKMjacdRcpE5hrglzYfOmcKhNp9bmwxk1ClS/N/ZgZ5V3XPhVB8YUz9E6I0R4kOc7JXlVhBoyAAsAKHIvQihO8aA/WFFElwqIKJZE9lco6XgTyS2WN0TA2y20A4256S+okZJHsNEon9D8KF/mEvVfedY3KJf8p7802904vF0n5RcvfrnB5abbsm7yZDwM8ZBidAuPP3XI9TZVOP8rRD9J4Cx8ftKycgA+uarxlfVG01ZYCxi2c0FitQBhcIS4N1KvM7VZKKIArKd5LJIkOGidI2I4dsBJMNTg4WY3gIQBAX1sWiqVJ5apwE3nh9DzltX8ML0ea+B8mb0LpH35ER59QFs792wmLqPaksNOaSo="

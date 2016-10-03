@@ -5,19 +5,16 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
-	"io"
-	"io/ioutil"
 	"os"
 	"path"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
+	"github.com/brandur/sorg/assets"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 	"github.com/yosssi/ace"
-	"github.com/yosssi/gcss"
 )
 
 // Conf contains configuration information for the command. It's extracted
@@ -89,12 +86,14 @@ func main() {
 	}))
 
 	tasks = append(tasks, pool.NewTask(func() error {
-		return compileJavascripts(path.Join(".", "javascripts"),
+		return assets.CompileJavascripts(
+			path.Join(".", "content", "javascripts"),
 			path.Join(versionedAssetsDir, "app.js"))
 	}))
 
 	tasks = append(tasks, pool.NewTask(func() error {
-		return compileStylesheets(path.Join(".", "stylesheets"),
+		return assets.CompileStylesheets(
+			path.Join(".", "content", "stylesheets"),
 			path.Join(versionedAssetsDir, "app.css"))
 	}))
 
@@ -166,121 +165,6 @@ func buildPlaylistInTransaction(txn *sql.Tx, playlist *deathguild.Playlist) erro
 	}
 
 	return nil
-}
-
-// Compiles a set of JavaScript files into a single large file by appending
-// them all to each other. Files are appended in alphabetical order so we
-// depend on the fact that there aren't too many interdependencies between
-// files. A common requirement can be given an underscore prefix to be loaded
-// first.
-//
-// Note that this function was copied wholesale from sorg and should probably
-// be shared between projects.
-func compileJavascripts(inPath, outPath string) error {
-	log.Infof("Building: %v", outPath)
-
-	javascriptInfos, err := ioutil.ReadDir(inPath)
-	if err != nil {
-		return err
-	}
-
-	outFile, err := os.Create(outPath)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	for _, javascriptInfo := range javascriptInfos {
-		if isHidden(javascriptInfo.Name()) {
-			continue
-		}
-
-		log.Debugf("Including: %v", javascriptInfo.Name())
-
-		inFile, err := os.Open(path.Join(inPath, javascriptInfo.Name()))
-		if err != nil {
-			return err
-		}
-
-		outFile.WriteString("/* " + javascriptInfo.Name() + " */\n\n")
-		outFile.WriteString("(function() {\n\n")
-
-		_, err = io.Copy(outFile, inFile)
-		if err != nil {
-			return err
-		}
-
-		outFile.WriteString("\n\n")
-		outFile.WriteString("}).call(this);\n\n")
-	}
-
-	return nil
-}
-
-// Compiles a set of stylesheet files into a single large file by appending
-// them all to each other. Files are appended in alphabetical order so we
-// depend on the fact that there aren't too many interdependencies between
-// files. CSS reset in particular is given an underscore prefix so that it gets
-// to load first.
-//
-// If a file has a ".sass" suffix, we attempt to render it as GCSS. This isn't
-// a perfect symmetry, but works well enough for these cases.
-//
-// Note that this function was copied wholesale from sorg and should probably
-// be shared between projects.
-func compileStylesheets(inPath, outPath string) error {
-	log.Printf("Building: %v", outPath)
-
-	stylesheetInfos, err := ioutil.ReadDir(inPath)
-	if err != nil {
-		return err
-	}
-
-	outFile, err := os.Create(outPath)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	for _, stylesheetInfo := range stylesheetInfos {
-		if isHidden(stylesheetInfo.Name()) {
-			continue
-		}
-
-		log.Debugf("Including: %v", stylesheetInfo.Name())
-
-		inFile, err := os.Open(path.Join(inPath, stylesheetInfo.Name()))
-		if err != nil {
-			return err
-		}
-
-		outFile.WriteString("/* " + stylesheetInfo.Name() + " */\n\n")
-
-		if strings.HasSuffix(stylesheetInfo.Name(), ".sass") {
-			_, err := gcss.Compile(outFile, inFile)
-			if err != nil {
-				return fmt.Errorf("Error compiling %v: %v",
-					stylesheetInfo.Name(), err)
-			}
-		} else {
-			_, err := io.Copy(outFile, inFile)
-			if err != nil {
-				return err
-			}
-		}
-
-		outFile.WriteString("\n\n")
-	}
-
-	return nil
-}
-
-// Detects a hidden file, i.e. one that starts with a dot.
-//
-// Note that this function was copied wholesale from sorg and should probably
-// be shared between projects.
-func isHidden(file string) bool {
-	return strings.HasPrefix(file, ".")
 }
 
 func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {

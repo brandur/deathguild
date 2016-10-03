@@ -22,6 +22,12 @@
 			"revisionTime": "2016-08-31T15:30:56Z"
 		},
 		{
+			"checksumSHA1": "J/q2DaqxYCLS7sF0PWvQhIfAtbA=",
+			"path": "github.com/brandur/sorg/assets",
+			"revision": "14c175828ad31803b7de184f4214d63f291faad0",
+			"revisionTime": "2016-10-03T02:48:33Z"
+		},
+		{
 			"checksumSHA1": "CrDS7/DO2ZXpw6OlLdUxSYXX3bs=",
 			"path": "github.com/brandur/sorg/pool",
 			"revision": "66661295a554b1f6a987633161bc9dabc75229c0",

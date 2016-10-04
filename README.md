@@ -72,10 +72,11 @@ after they finish, so it's easy to stand up a local mirror to run some
 analytics:
 
 ``` sh
-export DATABASE_URL=postgres://localhost/deathguild
+export DATABASE_NAME=deathguild
+export DATABASE_URL=postgres://localhost/$DATABASE_NAME
 export TARGET_DIR=./public
 
-createdb deathguild
+createdb $DATABASE_NAME
 mkdir -p $TARGET_DIR
 make database-fetch
 make database-restore

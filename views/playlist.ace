@@ -2,9 +2,10 @@
   p
     a href="/" ← Playlists
   h1.playlist Death Guild {{.Playlist.FormattedDay}}
+  p This event occurred on {{VerboseDate .Playlist.Day}}.
+  p {{PlaylistInfo .Playlist | HTML}}
   p
-    a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist
-  p {{PlaylistInfo .Playlist}}
+    a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist.
   table
     tr
       th

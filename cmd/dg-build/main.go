@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
@@ -286,7 +287,8 @@ func playlistInfo(playlist *deathguild.Playlist) string {
 
 	percent := float64(numWithSpotifyID) / float64(len(playlist.Songs)) * 100
 
-	return fmt.Sprintf("%v songs. %v songs (%.1f%%) found in Spotify.",
+	return fmt.Sprintf("<strong>%v</strong> songs. <strong>%v</strong> songs "+
+		"(%.1f%%) were found in Spotify.",
 		len(playlist.Songs), numWithSpotifyID, percent)
 }
 
@@ -296,6 +298,7 @@ func renderTemplate(view, target string, locals map[string]interface{}) error {
 			"PlaylistInfo":        playlistInfo,
 			"SpotifyPlaylistLink": spotifyPlaylistLink,
 			"SpotifySongLink":     spotifySongLink,
+			"VerboseDate":         verboseDate,
 		}})
 	if err != nil {
 		return err
@@ -336,4 +339,8 @@ func spotifyPlaylistLink(playlist *deathguild.Playlist) string {
 
 func spotifySongLink(song *deathguild.Song) string {
 	return "https://open.spotify.com/track/" + song.SpotifyID
+}
+
+func verboseDate(t time.Time) string {
+	return t.Format("January 2, 2006")
 }

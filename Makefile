@@ -1,7 +1,7 @@
 all: clean install test vet lint check-gofmt
 
-build:
-	$(GOPATH)/bin/dg-build
+build-site:
+	$(GOPATH)/bin/dg-build-site
 
 check-gofmt:
 	scripts/check_gofmt.sh
@@ -26,7 +26,7 @@ LONG_TTL := 86400
 # that are expected to change more frequently like any HTML file.
 SHORT_TTL := 3600
 
-deploy: check-target-dir
+deploy-site: check-target-dir
 # Note that AWS_ACCESS_KEY_ID will only be set for builds on the master
 # branch because it's stored in `.travis.yml` as an encrypted variable.
 # Encrypted variables are not made available to non-master branches because
@@ -103,11 +103,11 @@ install:
 lint:
 	go list ./... | egrep -v '/vendor/' | sed "s|^github\.com/brandur/sorg|.|" | xargs -I{} -n1 sh -c '$(GOPATH)/bin/golint -set_exit_status {} || exit 255'
 
-scrape:
-	$(GOPATH)/bin/dg-scrape
+scrape-playlists:
+	$(GOPATH)/bin/dg-scrape-playlists
 
-serve:
-	$(GOPATH)/bin/dg-serve
+serve-site:
+	$(GOPATH)/bin/dg-serve-site
 
 # Read from env or fall back.
 TEST_DATABASE_URL ?= postgres://localhost/deathguild-test

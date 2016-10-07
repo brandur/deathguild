@@ -22,7 +22,7 @@ cp .env.sample .env
 export $(cat .env)
 
 # creates a database of all playlist/song information
-dg-scrape
+dg-scrape-playlists
 
 # tags songs with their Spotify IDs
 dg-enrich-songs
@@ -31,16 +31,16 @@ dg-enrich-songs
 dg-create-playlists
 
 # builds a static site linking the new playlists
-dg-build
+dg-build-site
 
 # serves the built static site so it can be viewed locally
-dg-serve
+dg-serve-site
 
 # deploy the built site to S3
 export AWS_ACCESS_KEY_ID=
 export AWS_SECRET_ACCESS_KEY=
 export S3_BUCKET=
-make deploy
+make deploy-site
 ```
 
 A `Procfile` provides a watch/rebuild/serve loop for iterating on the site:

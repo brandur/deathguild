@@ -39,12 +39,12 @@ script:
     make &&
     make database-fetch &&
     make database-restore &&
-    make scrape &&
+    make scrape-playlists &&
     make enrich-songs &&
     make create-playlists &&
     make database-dump &&
-    make build &&
-    make deploy
+    make build-site &&
+    make deploy-site
 
 notifications:
   email:

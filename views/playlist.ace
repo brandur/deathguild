@@ -7,11 +7,13 @@
   p {{PlaylistInfo .Playlist}}
   table
     tr
+      th
       th Artist
       th Title
       th Spotify ID
     {{range .Playlist.Songs}}
       tr
+        td {{.Position}}
         td {{.Artist}}
         td {{.Title}}
         td

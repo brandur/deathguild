@@ -62,7 +62,7 @@ stay up-to-date with new playlists.
 * S3 bucket: `deathguild-playlists`
 * Database dump: `s3://deathguild-playlists/deathguild.sql`
 * Lambda rebuild period: 4 hours
-* Spotify account: `fyrerise`
+* Spotify account: `deathguild-playlists`
 
 ## Databases
 

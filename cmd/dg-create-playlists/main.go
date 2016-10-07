@@ -14,7 +14,7 @@ import (
 )
 
 // Format for the names of Death Guild playlists.
-const playlistNameFormat = "Death Guild Playlist - %v"
+const playlistNameFormat = "Death Guild — %v"
 
 // Conf contains configuration information for the command. It's extracted
 // from environment variables.

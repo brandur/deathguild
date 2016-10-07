@@ -39,7 +39,7 @@ type Conf struct {
 
 	// SpotifyUser is the name of the Spotify user who owns the Death Guild
 	// playlists. This is used to generate links.
-	SpotifyUser string `env:"SPOTIFY_USER,default=fyrerise"`
+	SpotifyUser string `env:"SPOTIFY_USER,required"`
 
 	// TargetDir is the target location where the site will be built to.
 	TargetDir string `env:"TARGET_DIR,default=./public"`

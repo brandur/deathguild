@@ -82,6 +82,15 @@ make database-fetch
 make database-restore
 ```
 
+Then to dump it back:
+
+``` sh
+export S3_BUCKET=deathguild-playlists
+
+make database-dump
+aws s3 cp $TARGET_DIR/deathguild.sql s3://$S3_BUCKET/ --acl public-read
+```
+
 ## Testing
 
 Run the tests with:

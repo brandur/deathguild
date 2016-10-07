@@ -54,6 +54,7 @@ env:
   global:
     - DATABASE_URL=postgres://localhost/deathguild?sslmode=disable
     - S3_BUCKET=deathguild-playlists
+    - SPOTIFY_USER=deathguild-playlists
     - TARGET_DIR=./public
     - TEST_DATABASE_URL=postgres://localhost/deathguild-test?sslmode=disable
 

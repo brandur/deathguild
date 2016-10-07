@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"os"
 	"path"
+	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild"
@@ -27,6 +28,13 @@ type Conf struct {
 	// DatabaseURL is a connection string for a database used to store
 	// playlist and song information.
 	DatabaseURL string `env:"DATABASE_URL,required"`
+
+	// LocalFonts starts using locally downloaded versions of Google Fonts.
+	// This is not ideal for real deployment because you won't be able to
+	// leverage Google's CDN and the caching that goes with it, and may not get
+	// the font format for requesting browsers, but good for airplane rides
+	// where you otherwise wouldn't have the fonts.
+	LocalFonts bool `env:"LOCAL_FONTS,default=false"`
 
 	// SpotifyUser is the name of the Spotify user who owns the Death Guild
 	// playlists. This is used to generate links.
@@ -83,6 +91,10 @@ func main() {
 
 	tasks = append(tasks, pool.NewTask(func() error {
 		return buildIndex(playlistYears)
+	}))
+
+	tasks = append(tasks, pool.NewTask(func() error {
+		return linkFonts()
 	}))
 
 	tasks = append(tasks, pool.NewTask(func() error {
@@ -167,6 +179,50 @@ func buildPlaylistInTransaction(txn *sql.Tx, playlist *deathguild.Playlist) erro
 	return nil
 }
 
+func ensureSymlink(source, dest string) error {
+	log.Debugf("Checking symbolic link (%v): %v -> %v",
+		path.Base(source), source, dest)
+
+	var actual string
+
+	_, err := os.Stat(dest)
+
+	// Note that if a symlink file does exist, but points to a non-existent
+	// location, we still get an "does not exist" error back, so we fall down
+	// to the general create path so that the symlink file can be removed.
+	//
+	// The call to RemoveAll does not affect the other path of the symlink file
+	// not being present because it doesn't care whether or not the file it's
+	// trying remove is actually there.
+	if os.IsNotExist(err) {
+		log.Debugf("Destination link does not exist. Creating.")
+		goto create
+	}
+	if err != nil {
+		return err
+	}
+
+	actual, err = os.Readlink(dest)
+	if err != nil {
+		return err
+	}
+
+	if actual == source {
+		log.Debugf("Link exists.")
+		return nil
+	}
+
+	log.Debugf("Destination links to wrong source. Creating.")
+
+create:
+	err = os.RemoveAll(dest)
+	if err != nil {
+		return err
+	}
+
+	return os.Symlink(source, dest)
+}
+
 func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
 	rows, err := txn.Query(`
 		SELECT id, day, spotify_id
@@ -205,6 +261,20 @@ func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
 	return playlistYears, nil
 }
 
+func linkFonts() error {
+	source, err := filepath.Abs(path.Join(".", "content", "fonts"))
+	if err != nil {
+		return err
+	}
+
+	dest, err := filepath.Abs(path.Join(conf.TargetDir, "assets", "fonts"))
+	if err != nil {
+		return err
+	}
+
+	return ensureSymlink(source, dest)
+}
+
 // Returns some basic length information about the playlist.
 func playlistInfo(playlist *deathguild.Playlist) string {
 	var numWithSpotifyID int
@@ -241,7 +311,8 @@ func renderTemplate(view, target string, locals map[string]interface{}) error {
 	defer writer.Flush()
 
 	data := map[string]interface{}{
-		"Release": deathguild.Release,
+		"LocalFonts": conf.LocalFonts,
+		"Release":    deathguild.Release,
 	}
 
 	// Override our basic data map with anything that the specific page sent

@@ -1,7 +1,7 @@
 = content main
   p
     a href="/" ← Playlists
-  h1 Death Guild {{.Playlist.FormattedDay}}
+  h1.playlist Death Guild {{.Playlist.FormattedDay}}
   p
     a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist
   p {{PlaylistInfo .Playlist}}

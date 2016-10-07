@@ -1,0 +1,86 @@
+html
+  // Root font size. All other sizes with "rem" are relative to this.
+  //
+  // This corresponds to the default font size of 16px.
+  // TODO: Update this note once settling on something.
+  font-size: 120%
+
+  a
+    color: #bbb
+    text-decoration: underline
+
+    &:hover
+      text-decoration: none
+
+    &:visited
+
+    &.playlist
+      color: #fff
+      font-size: 1.2rem
+      text-decoration: none
+
+      &:hover
+        text-decoration: underline
+
+    &.spotify
+      font-size: 0.7rem
+
+  body
+    background: #000
+    color: #fff
+    font-family: 'Cormorant Garamond', georgia, serif
+    margin: 40px 60px
+
+    h1
+      font-family: 'Cormorant Garamond', georgia, serif
+      font-size: 10rem
+      letter-spacing: -10px
+      line-height: 0.8em
+      margin: 40px 0
+
+      &.playlist
+        font-size: 8rem
+        letter-spacing: -8px
+
+    h2
+      font-family: 'Cormorant Garamond', georgia, serif
+      font-size: 4rem
+      letter-spacing: -4px
+      margin: 30px 0
+
+    li
+      line-height: 1.5em
+
+    p
+      line-height: 1.5em
+      max-width: 600px
+
+    p, table
+      margin: 20px 0
+
+    table
+      border-collapse: separate
+      border-spacing: 18px
+
+      td
+        line-height: 1em
+
+      th
+        font-weight: bold
+        line-height: 2em
+
+    .playlist-years
+      column-width: 100px
+      -moz-column-width: 100px
+      -webkit-column-width: 100px
+
+    .playlist-year
+      column-width: 250px
+      -moz-column-width: 250px
+      -webkit-column-width: 250px
+
+      li
+        line-height: 1.8em
+        break-inside: avoid
+        page-break-inside: avoid
+        -webkit-break-inside: avoid

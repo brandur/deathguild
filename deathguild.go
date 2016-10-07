@@ -14,7 +14,7 @@ const (
 	// Release allows CSS and JS assets to be invalidated quickly by changing
 	// their URL. Bump this number whenever something significant changes that
 	// should be invalidated as quickly as possible.
-	Release = "1"
+	Release = "2"
 )
 
 // Playlist is a playlist for a single night of Deathguild.
@@ -40,15 +40,14 @@ func (p *Playlist) FormattedDay() string {
 
 // FetchSongs populates the playlist's songs collection from the database.
 func (p *Playlist) FetchSongs(txn *sql.Tx) error {
+	// Add one to position to make it 1-indexed as people are more used to
+	// that.
 	rows, err := txn.Query(`
-		SELECT id, artist, title, spotify_checked_at, spotify_id
-		FROM songs
-		WHERE id IN (
-				SELECT songs_id
-				FROM playlists_songs
-				WHERE playlists_id = $1
-				ORDER BY position
-			)`,
+		SELECT s.id, (position + 1), artist, title, spotify_checked_at, spotify_id
+		FROM playlists_songs ps
+		INNER JOIN songs s ON ps.songs_id = s.id
+		WHERE ps.playlists_id = $1
+		ORDER BY position`,
 		p.ID,
 	)
 	if err != nil {
@@ -63,6 +62,7 @@ func (p *Playlist) FetchSongs(txn *sql.Tx) error {
 
 		err = rows.Scan(
 			&song.ID,
+			&song.Position,
 			&song.Artist,
 			&song.Title,
 			&spotifyCheckedAt,
@@ -93,6 +93,9 @@ type Song struct {
 
 	// ID is the local database identifier of the song.
 	ID int
+
+	// Position is the track number of a song within a playlist.
+	Position int
 
 	// Title is the title of the song.
 	Title string

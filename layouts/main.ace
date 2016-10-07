@@ -9,6 +9,8 @@ html lang='en'
     link href="/assets/{{.Release}}/app.css" media="screen" rel="stylesheet" type="text/css"
     script src="/assets/{{.Release}}/app.js" type="text/javascript"
 
+    = include views/_cormorant_garamond .
+
   body
     #container
       = yield main

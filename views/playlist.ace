@@ -1,17 +1,20 @@
 = content main
   p
     a href="/" ← Playlists
-  h1 Death Guild {{.Playlist.FormattedDay}}
+  h1.playlist Death Guild {{.Playlist.FormattedDay}}
+  p This event occurred on {{VerboseDate .Playlist.Day}}.
+  p {{PlaylistInfo .Playlist | HTML}}
   p
-    a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist
-  p {{PlaylistInfo .Playlist}}
+    a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist.
   table
     tr
+      th
       th Artist
       th Title
       th Spotify ID
     {{range .Playlist.Songs}}
       tr
+        td {{.Position}}
         td {{.Artist}}
         td {{.Title}}
         td

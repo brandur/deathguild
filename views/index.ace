@@ -3,23 +3,25 @@
   p Death Guild is the oldest continually operating gothic/industrial dance club in the United States, and second in the world. You can find more information about it on <a href="https://en.wikipedia.org/wiki/Death_Guild">Wikipedia</a> or at its <a href="http://www.deathguild.com/">official site</a>.
   p This site retrieves track lists for every night of Death Guild and creates Spotify playlists for them. Never miss Death Guild again!
   p Note that playlists may be incomplete if good candidates for songs couldn't be found in the Spotify database.
-  p <a href="https://github.com/brandur/deathguild">Source code is available here</a>.
+  p <a href="https://github.com/brandur/deathguild">Source code is available on GitHub</a>.
 
   h2 Years
-  ul
-    {{range .PlaylistYears}}
-      li
-        a href="#year-{{.Year}}" {{.Year}}
-    {{end}}
+  .playlist-years
+    ul
+      {{range .PlaylistYears}}
+        li
+          a href="#year-{{.Year}}" {{.Year}}
+      {{end}}
 
   {{range .PlaylistYears}}
     h2 id="year-{{.Year}}" {{.Year}}
-    ul
-      {{range .Playlists}}
-        li
-          a href="/playlists/{{.FormattedDay}}"
-            {{.FormattedDay}}
-          |  
-          a href={{SpotifyPlaylistLink . }} Spotify playlist
-      {{end}}
+    .playlist-year
+      ul
+        {{range .Playlists}}
+          li
+            a.playlist href="/playlists/{{.FormattedDay}}"
+              {{.FormattedDay}}
+            |  
+            a.spotify href={{SpotifyPlaylistLink . }} (Spotify playlist)
+        {{end}}
   {{end}}

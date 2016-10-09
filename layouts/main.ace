@@ -7,7 +7,10 @@ html lang='en'
     meta content="text/html; charset=utf-8" http-equiv="Content-Type"
 
     link href="/assets/{{.Release}}/app.css" media="screen" rel="stylesheet" type="text/css"
-    script src="/assets/{{.Release}}/app.js" type="text/javascript"
+
+    / Currently not using JavaScript for anything, so keep this commented out
+    / for now so that clients need to pick up fewer assets.
+    / script src="/assets/{{.Release}}/app.js" type="text/javascript"
 
     = include views/_cormorant_garamond .
 

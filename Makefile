@@ -1,5 +1,8 @@
 all: clean install test vet lint check-gofmt
 
+# alias
+build: build-site
+
 build-site:
 	$(GOPATH)/bin/dg-build-site
 
@@ -105,6 +108,9 @@ lint:
 
 scrape-playlists:
 	$(GOPATH)/bin/dg-scrape-playlists
+
+# alias
+serve: serve-site
 
 serve-site:
 	$(GOPATH)/bin/dg-serve-site

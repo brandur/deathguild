@@ -1,3 +1,3 @@
-serve:   make serve-site
-watch:   make watch
-watchgo: make watch-go
+servesite: make serve-site
+watchsite: make watch-site
+watchgo:   make watch-go

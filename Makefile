@@ -125,8 +125,11 @@ test:
 vet:
 	go vet $(shell go list ./... | egrep -v '/vendor/')
 
-watch:
-	fswatch -o content/ layouts/ pages/ views/ | xargs -n1 -I{} make build
+# alias
+watch: watch-site
+
+watch-site:
+	fswatch -o content/ layouts/ pages/ views/ | xargs -n1 -I{} make build-site
 
 # This is designed to be compromise between being explicit and readability. We
 # can allow the find to discover everything in vendor/, but then the fswatch

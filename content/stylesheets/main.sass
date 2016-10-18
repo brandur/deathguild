@@ -87,3 +87,14 @@ html
         break-inside: avoid
         page-break-inside: avoid
         -webkit-break-inside: avoid
+
+@media handheld, only screen and (max-width: 767px), only screen and (max-device-width: 767px)
+  html
+    body
+      margin: 20px 30px
+
+      h1
+        font-size: 7rem
+
+        &.playlist
+          font-size: 7rem

@@ -26,7 +26,10 @@ before_script:
   - psql -U postgres -c 'CREATE DATABASE "deathguild-test";'
 
 # Note we've changed the script with &&s so that all steps need to succeed
-# before the next command is issued.
+# before the next command is issued. The only exceptions are the enrich-songs
+# and create-playlist steps, which are allowed to fail so that Spotify's
+# draconian rate limits can't interfere with the build process to too great of
+# a degree.
 #
 # Note that many build steps depend on the presence of a Postgres database to
 # work. We fetch the latest state of our database from S3 when the build
@@ -35,18 +38,18 @@ before_script:
 # will be put back into S3 during the deployment step so that the next build
 # can access it.
 #
-# Limit to 100 attempted enrichments at any given time so that even with a
-# huge backlog we will still make slow forward progress. The Spotify API is
-# extremely stingy on the number of allowed requests before rate limiting.
+# Use very low concurrency (= 1) for commands that need to talk to Spotify.
 script:
   - mkdir $TARGET_DIR &&
     make &&
     make database-fetch &&
     make database-restore &&
     make scrape-playlists &&
-    LIMIT=100 make enrich-songs &&
-    make create-playlists &&
-    make database-dump &&
+    CONCURRENCY=1 make enrich-songs
+
+  - CONCURRENCY=1 make create-playlists
+
+  - make database-dump &&
     make build-site &&
     make deploy-site
 

@@ -43,7 +43,7 @@ script:
     make database-fetch &&
     make database-restore &&
     make scrape-playlists &&
-    CONCURRENCY=1 make enrich-songs &&
+    CONCURRENCY=1 LIMIT=100 make enrich-songs &&
     make create-playlists &&
     make database-dump &&
     make build-site &&

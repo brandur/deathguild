@@ -33,6 +33,15 @@ type Conf struct {
 	// and song information.
 	DatabaseURL string `env:"DATABASE_URL,required"`
 
+	// Limit is an optional limit for the number of songs to try and enrich at
+	// any given time. This is useful in CI because if there are too many
+	// songs without IDs then the Spotify rate limits will fail the build
+	// every time leaving it in a state of permanent failure. Instead, limit
+	// to something that we know we can get under the limit and just slowly
+	// collect all of the IDs over a series of subsequent builds that are run
+	// over time.
+	Limit int `env:"LIMIT,default=10000"`
+
 	// RefreshToken is our Spotify refresh token.
 	RefreshToken string `env:"REFRESH_TOKEN,required"`
 }
@@ -79,26 +88,34 @@ func artistsToString(artists []spotify.SimpleArtist) string {
 }
 
 func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
+	song.SpotifyCheckedAt = time.Now()
+
 	searchString := fmt.Sprintf("artist:%v %v",
 		song.Artist, song.Title)
-
 	res, err := client.Search(searchString, spotify.SearchTypeTrack)
 	if err != nil {
 		return err
 	}
 
-	song.SpotifyCheckedAt = time.Now()
-
 	if len(res.Tracks.Tracks) < 1 {
-		log.Debugf("Song not found: %+v", song)
-		atomic.AddInt64(numNotFound, 1)
-
-		err = updateSong(txn, song)
+		searchString = fmt.Sprintf("artist:%v %v",
+			song.Artist, song.Title)
+		res, err = client.Search(searchString, spotify.SearchTypeTrack)
 		if err != nil {
 			return err
 		}
 
-		return nil
+		if len(res.Tracks.Tracks) < 1 {
+			log.Debugf("Song not found: %+v", song)
+			atomic.AddInt64(numNotFound, 1)
+
+			err = updateSong(txn, song)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
 	}
 
 	track := res.Tracks.Tracks[0]
@@ -162,6 +179,12 @@ func runLoop() (bool, int, error) {
 
 	log.Infof("Retrieved %v Spotify ID(s); failed to find %v",
 		len(songs)-int(numNotFound), numNotFound)
+
+	if len(songs) >= conf.Limit {
+		log.Infof("Hit configured song limit of %v; dying peacefully",
+			len(songs))
+	}
+
 	return false, 0, nil
 }
 

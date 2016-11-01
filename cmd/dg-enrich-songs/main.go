@@ -218,7 +218,7 @@ func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
 				-- (Basically there was a single massive batch from back when I
 				-- did the initial backfill).
 				OR spotify_checked_at + (random() * '1 week'::interval) <
-					NOW() - '1 months'::interval)
+					NOW() - '3 months'::interval)
 
 		-- Prefer newer songs because it's more likely that we'll successfully
 		-- find IDs for them. The older stuff tends to be songs that will probably

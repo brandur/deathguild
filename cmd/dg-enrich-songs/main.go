@@ -209,9 +209,16 @@ func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
 		FROM songs
 		WHERE spotify_id IS NULL
 			AND (spotify_checked_at IS NULL
-				-- periodically recheck Spotify for information that we failed
-				-- to fill
-				OR spotify_checked_at < NOW() - '3 months'::interval)
+				-- Periodically recheck Spotify for information that we failed
+				-- to fill.
+				--
+				-- We jitter from the last check time by a random interval
+				-- between 0 seconds and a week just so that we aren't trying to
+				-- do huge batches with similar check times all at the same time.
+				-- (Basically there was a single massive batch from back when I
+				-- did the initial backfill).
+				OR spotify_checked_at + (random() * '1 week'::interval) <
+					NOW() - '1 months'::interval)
 
 		-- Prefer newer songs because it's more likely that we'll successfully
 		-- find IDs for them. The older stuff tends to be songs that will probably

@@ -154,7 +154,7 @@ func runLoop() (bool, int, error) {
 
 	// Do work in batches so we don't have to keep everything in memory
 	// at once.
-	songs, err := songsNeedingID(txn, 100)
+	songs, err := songsNeedingID(txn, 10)
 	if err != nil {
 		return false, 0, err
 	}
@@ -183,6 +183,7 @@ func runLoop() (bool, int, error) {
 	if len(songs) >= conf.Limit {
 		log.Infof("Hit configured song limit of %v; dying peacefully",
 			len(songs))
+		return true, 0, nil
 	}
 
 	return false, 0, nil

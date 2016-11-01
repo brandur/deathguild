@@ -34,13 +34,16 @@ before_script:
 # state after the build finishes. If this is the master branch, the new state
 # will be put back into S3 during the deployment step so that the next build
 # can access it.
+#
+# For now I've changed CONCURRENCY on enrich-songs to 1. The Spotify API
+# _really_ seems to dislike concurrent requests.
 script:
   - mkdir $TARGET_DIR &&
     make &&
     make database-fetch &&
     make database-restore &&
     make scrape-playlists &&
-    make enrich-songs &&
+    CONCURRENCY=1 make enrich-songs &&
     make create-playlists &&
     make database-dump &&
     make build-site &&

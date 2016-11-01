@@ -35,17 +35,16 @@ before_script:
 # will be put back into S3 during the deployment step so that the next build
 # can access it.
 #
-# For now I've changed CONCURRENCY on enrich-songs to 1. The Spotify API
-# _really_ seems to dislike concurrent requests. We also limit to 100 at any
-# given time so that even with a huge backlog we will still make slow forward
-# progress.
+# Limit to 100 attempted enrichments at any given time so that even with a
+# huge backlog we will still make slow forward progress. The Spotify API is
+# extremely stingy on the number of allowed requests before rate limiting.
 script:
   - mkdir $TARGET_DIR &&
     make &&
     make database-fetch &&
     make database-restore &&
     make scrape-playlists &&
-    CONCURRENCY=1 LIMIT=100 make enrich-songs &&
+    LIMIT=100 make enrich-songs &&
     make create-playlists &&
     make database-dump &&
     make build-site &&

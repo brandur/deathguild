@@ -16,6 +16,13 @@ import (
 	"github.com/zmb3/spotify"
 )
 
+// The number of songs that we pull out of the database at a time and try to
+// enrich. This essentially represents the size of the set that we'll
+// atomically commit at once. We keep the number pretty small so that even if
+// we encounter rate limiting from Spotify, we'll at least make some forward
+// progress.
+const batchSize = 20
+
 // Conf contains configuration information for the command. It's extracted from
 // environment variables.
 type Conf struct {
@@ -151,7 +158,7 @@ func runLoop() (bool, int, error) {
 
 	// Do work in batches so we don't have to keep everything in memory
 	// at once.
-	songs, err := songsNeedingID(txn, 10)
+	songs, err := songsNeedingID(txn, batchSize)
 	if err != nil {
 		return false, 0, err
 	}
@@ -205,6 +212,12 @@ func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
 				-- periodically recheck Spotify for information that we failed
 				-- to fill
 				OR spotify_checked_at < NOW() - '1 month'::interval)
+
+		-- Prefer newer songs because it's more likely that we'll successfully
+		-- find IDs for them. The older stuff tends to be songs that will probably
+		-- never get an ID but have re-entered a check window.
+		ORDER BY id DESC
+
 		LIMIT $1`,
 		limit,
 	)

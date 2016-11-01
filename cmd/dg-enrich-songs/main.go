@@ -114,6 +114,7 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 				return err
 			}
 
+			sleepWithJitter()
 			return nil
 		}
 	}
@@ -132,11 +133,7 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 		return err
 	}
 
-	// be kind and rate limit our requests
-	t := rand.Float32()
-	log.Debugf("Sleeping %v seconds", t)
-	time.Sleep(time.Duration(t) * time.Second)
-
+	sleepWithJitter()
 	return nil
 }
 
@@ -187,6 +184,16 @@ func runLoop() (bool, int, error) {
 	}
 
 	return false, 0, nil
+}
+
+// Spotify has an extremely draconian rate limit even for registered apps
+// so sleep between requests.
+func sleepWithJitter() {
+	// This is range of 1 to 2 seconds. This seems to be experimentally
+	// adequate at concurrency one to generally keep us under limit.
+	t := rand.Float32() + 1
+	log.Infof("Sleeping %v seconds", t)
+	time.Sleep(time.Duration(t) * time.Second)
 }
 
 func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {

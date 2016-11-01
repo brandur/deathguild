@@ -36,7 +36,9 @@ before_script:
 # can access it.
 #
 # For now I've changed CONCURRENCY on enrich-songs to 1. The Spotify API
-# _really_ seems to dislike concurrent requests.
+# _really_ seems to dislike concurrent requests. We also limit to 100 at any
+# given time so that even with a huge backlog we will still make slow forward
+# progress.
 script:
   - mkdir $TARGET_DIR &&
     make &&

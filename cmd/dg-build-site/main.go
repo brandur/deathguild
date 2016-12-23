@@ -173,7 +173,7 @@ func buildPlaylistInTransaction(txn *sql.Tx, playlist *deathguild.Playlist) erro
 		path.Join(conf.TargetDir, "playlists", playlist.FormattedDay()),
 		map[string]interface{}{
 			"Playlist": playlist,
-			"Title":    "Death Guild - " + playlist.FormattedDay(),
+			"Title":    "Playlist for " + playlist.FormattedDay(),
 		},
 	)
 	if err != nil {

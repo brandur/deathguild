@@ -1,6 +1,8 @@
 package deathguild
 
 import (
+	"crypto/tls"
+	"net/http"
 	"time"
 
 	"github.com/zmb3/spotify"
@@ -11,6 +13,8 @@ import (
 // use. It takes advantage of the fact that we can just refresh right away to
 // get a valid access token.
 func GetSpotifyClient(clientID, clientSecret, refreshToken string) *spotify.Client {
+	http.DefaultTransport.(*http.Transport).TLSNextProto = map[string]func(authority string, c *tls.Conn) http.RoundTripper{}
+
 	// So as not to introduce a web flow into this program, we cheat a bit here
 	// by just using a refresh token and not an access token (because access
 	// tokens expiry very quickly and are therefore not suitable for inclusion

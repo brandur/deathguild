@@ -60,6 +60,7 @@ notifications:
 env:
   global:
     - DATABASE_URL=postgres://localhost/deathguild?sslmode=disable
+    - GOOGLE_ANALYTICS_ID=UA-47798518-2
     - S3_BUCKET=deathguild-playlists
     - SPOTIFY_USER=deathguild-playlists
     - TARGET_DIR=./public

@@ -30,6 +30,9 @@ type Conf struct {
 	// playlist and song information.
 	DatabaseURL string `env:"DATABASE_URL,required"`
 
+	// GoogleAnalyticsID is the account identifier for Google Analytics to use.
+	GoogleAnalyticsID string `env:"GOOGLE_ANALYTICS_ID"`
+
 	// LocalFonts starts using locally downloaded versions of Google Fonts.
 	// This is not ideal for real deployment because you won't be able to
 	// leverage Google's CDN and the caching that goes with it, and may not get
@@ -313,8 +316,9 @@ func renderTemplate(view, target string, locals map[string]interface{}) error {
 	defer writer.Flush()
 
 	data := map[string]interface{}{
-		"LocalFonts": conf.LocalFonts,
-		"Release":    deathguild.Release,
+		"GoogleAnalyticsID": conf.GoogleAnalyticsID,
+		"LocalFonts":        conf.LocalFonts,
+		"Release":           deathguild.Release,
 	}
 
 	// Override our basic data map with anything that the specific page sent

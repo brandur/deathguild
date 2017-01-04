@@ -16,5 +16,6 @@ html lang='en'
     = include views/_cormorant_garamond .
 
   body
+    = include views/_analytics .
     #container
       = yield main

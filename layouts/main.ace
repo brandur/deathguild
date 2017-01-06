@@ -19,3 +19,4 @@ html lang='en'
     = include views/_analytics .
     #container
       = yield main
+      p.footer Song mixes are courtesy of Death Guild and its respective DJs. Site is maintained by <a href="https://brandur.org">Brandur</a>. Its <a href="https://github.com/brandur/deathguild">source code</a> is available on GitHub.

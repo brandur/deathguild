@@ -133,7 +133,7 @@ func buildIndex(playlistYears []*PlaylistYear) error {
 		path.Join(conf.TargetDir, "index.html"),
 		map[string]interface{}{
 			"PlaylistYears": playlistYears,
-			"Title":         "Death Guild Playlists Index",
+			"Title":         "Death Guild Spotify Playlists",
 		},
 	)
 	if err != nil {

@@ -1,16 +1,13 @@
 language: go
 
 go:
-  - 1.7
+  - 1.8
 
 # specified explicitly so we can we can get Postgres 9.5
 dist: trusty
 
-# Changed to "required" so we can get access to Postgres 9.5, which is not
-# available in container environments (see travis-ci/travis-ci#4264). This will
-# result in slower builds so we should changed back to "false" as soon as it's
-# possible to do so.
-sudo: required
+# faster container-based builds
+sudo: false
 
 addons:
   postgresql: "9.5"

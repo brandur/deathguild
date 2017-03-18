@@ -1,17 +1,3 @@
-// Copyright 2014, 2015 Zac Bergquist
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package spotify
 
 import (
@@ -49,7 +35,7 @@ type SimpleAlbum struct {
 	// widest first.
 	Images []Image `json:"images"`
 	// Known external URLs for this album.
-	ExternalURLs ExternalURL `json:"external_urls"`
+	ExternalURLs map[string]string `json:"external_urls"`
 }
 
 // Copyright contains the copyright statement associated with an album.
@@ -76,9 +62,9 @@ type FullAlbum struct {
 	// to a time.Time value.
 	ReleaseDate string `json:"release_date"`
 	// The precision with which ReleaseDate value is known: "year", "month", or "day"
-	ReleaseDatePrecision string          `json:"release_date_precision"`
-	Tracks               SimpleTrackPage `json:"tracks"`
-	ExternalIDs          ExternalID      `json:"external_ids"`
+	ReleaseDatePrecision string            `json:"release_date_precision"`
+	Tracks               SimpleTrackPage   `json:"tracks"`
+	ExternalIDs          map[string]string `json:"external_ids"`
 }
 
 // SavedAlbum provides info about an album saved to an user's account.
@@ -90,7 +76,6 @@ type SavedAlbum struct {
 	AddedAt   string `json:"added_at"`
 	FullAlbum `json:"album"`
 }
-
 
 // ReleaseDateTime converts the album's ReleaseDate to a time.TimeValue.
 // All of the fields in the result may not be valid.  For example, if
@@ -114,7 +99,7 @@ func (f *FullAlbum) ReleaseDateTime() time.Time {
 // GetAlbum gets Spotify catalog information for a single album, given its Spotify ID.
 func (c *Client) GetAlbum(id ID) (*FullAlbum, error) {
 	spotifyURL := fmt.Sprintf("%salbums/%s", baseAddress, id)
-	resp, err := c.http.Get(string(spotifyURL))
+	resp, err := c.http.Get(spotifyURL)
 	if err != nil {
 		return nil, err
 	}

@@ -1,17 +1,3 @@
-// Copyright 2014, 2015 Zac Bergquist
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package spotify
 
 import (
@@ -31,7 +17,7 @@ type User struct {
 	// this field when querying for a playlist.
 	DisplayName string `json:"display_name"`
 	// Known public external URLs for the user.
-	ExternalURLs ExternalURL `json:"external_urls"`
+	ExternalURLs map[string]string `json:"external_urls"`
 	// Information about followers of the user.
 	Followers Followers `json:"followers"`
 	// A link to the Web API endpoint for this user.
@@ -163,23 +149,42 @@ func (c *Client) CurrentUsersTracksOpt(opt *Options) (*SavedTrackPage, error) {
 	return &result, nil
 }
 
-// Follow adds the current user as a follower of one or more
-// artists or other spotify users, identified by their Spotify IDs.
+// FollowUser adds the current user as a follower of one or more
+// spotify users, identified by their Spotify IDs.
 // This call requires authorization.
 //
 // Modifying the lists of artists or users the current user follows
 // requires that the application has the ScopeUserFollowModify scope.
-func (c *Client) Follow(ids ...ID) error {
-	return c.modifyFollowers(true, ids...)
+func (c *Client) FollowUser(ids ...ID) error {
+	return c.modifyFollowers("user", true, ids...)
 }
 
-// Unfollow removes the current user as a follower of one or more
-// artists or other Spotify users.  This call requires authorization.
+// FollowArtist adds the current user as a follower of one or more
+// spotify artists, identified by their Spotify IDs.
+// This call requires authorization.
 //
 // Modifying the lists of artists or users the current user follows
 // requires that the application has the ScopeUserFollowModify scope.
-func (c *Client) Unfollow(ids ...ID) error {
-	return c.modifyFollowers(false, ids...)
+func (c *Client) FollowArtist(ids ...ID) error {
+	return c.modifyFollowers("artist", true, ids...)
+}
+
+// UnfollowUser removes the current user as a follower of one or more
+// Spotify users.  This call requires authorization.
+//
+// Modifying the lists of artists or users the current user follows
+// requires that the application has the ScopeUserFollowModify scope.
+func (c *Client) UnfollowUser(ids ...ID) error {
+	return c.modifyFollowers("user", false, ids...)
+}
+
+// UnfollowArtist removes the current user as a follower of one or more
+// Spotify artists.  This call requires authorization.
+//
+// Modifying the lists of artists or users the current user follows
+// requires that the application has the ScopeUserFollowModify scope.
+func (c *Client) UnfollowArtist(ids ...ID) error {
+	return c.modifyFollowers("artist", false, ids...)
 }
 
 // CurrentUserFollows checks to see if the current user is following
@@ -217,11 +222,14 @@ func (c *Client) CurrentUserFollows(t string, ids ...ID) ([]bool, error) {
 	return result, nil
 }
 
-func (c *Client) modifyFollowers(follow bool, ids ...ID) error {
+func (c *Client) modifyFollowers(usertype string, follow bool, ids ...ID) error {
 	if l := len(ids); l == 0 || l > 50 {
 		return errors.New("spotify: Follow/Unfollow supports 1 to 50 IDs")
 	}
-	spotifyURL := baseAddress + "me/following?" + strings.Join(toStringSlice(ids), ",")
+	v := url.Values{}
+	v.Add("type", usertype)
+	v.Add("ids", strings.Join(toStringSlice(ids), ","))
+	spotifyURL := baseAddress + "me/following?" + v.Encode()
 	method := "PUT"
 	if !follow {
 		method = "DELETE"

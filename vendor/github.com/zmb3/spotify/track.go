@@ -1,17 +1,3 @@
-// Copyright 2014, 2015 Zac Bergquist
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package spotify
 
 import (
@@ -36,7 +22,7 @@ type SimpleTrack struct {
 	// true => yes, it does; false => no, it does not.
 	Explicit bool `json:"explicit"`
 	// External URLs for this track.
-	ExternalURLs ExternalURL `json:"external_urls"`
+	ExternalURLs map[string]string `json:"external_urls"`
 	// A link to the Web API endpoint providing full details for this track.
 	Endpoint string `json:"href"`
 	ID       ID     `json:"id"`
@@ -56,7 +42,7 @@ type FullTrack struct {
 	// The album on which the track appears. The album object includes a link in href to full information about the album.
 	Album SimpleAlbum `json:"album"`
 	// Known external IDs for the track.
-	ExternalIDs ExternalID `json:"external_ids"`
+	ExternalIDs map[string]string `json:"external_ids"`
 	// Popularity of the track.  The value will be between 0 and 100,
 	// with 100 being the most popular.  The popularity is calculated from
 	// both total plays and most recent plays.

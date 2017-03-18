@@ -1,17 +1,3 @@
-// Copyright 2014, 2015 Zac Bergquist
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Package spotify provides utilties for interfacing
 // with Spotify's Web API.
 package spotify
@@ -92,10 +78,7 @@ func (i Image) Download(dst io.Writer) error {
 		return errors.New("Couldn't download image - HTTP" + strconv.Itoa(resp.StatusCode))
 	}
 	_, err = io.Copy(dst, resp.Body)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Error represents an error returned by the Spotify Web API.
@@ -120,26 +103,6 @@ func decodeError(r io.Reader) error {
 		return errors.New("spotify: couldn't decode error")
 	}
 	return e.E
-}
-
-// ExternalID contains information that identifies an item.
-type ExternalID struct {
-	// The identifier type, for example:
-	//   "isrc" - International Standard Recording Code
-	//   "ean"  - International Article Number
-	//   "upc"  - Universal Product Code
-	Key string `json:"{key}"`
-	// An external identifier for the object.
-	Value string `json:"{value}"`
-}
-
-// ExternalURL indicates an external, public URL for an item.
-type ExternalURL struct {
-	// The type of the URL, for example:
-	//    "spotify" - The Spotify URL for the object.
-	Key string `json:"{key}"`
-	// An external, public URL to the object.
-	Value string `json:"{value}"`
 }
 
 // Client is a client for working with the Spotify Web API.

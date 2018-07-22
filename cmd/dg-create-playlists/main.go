@@ -137,6 +137,16 @@ func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 		}
 	}
 
+	// Spotify only allows us to add 100 tracks at once.
+	//
+	// Here we truncate down to 100, which is wrong, but to do anything else
+	// would require some other non-idempotent playlist construction here (we
+	// can no longer replace), so I'll have to rethink my strategy.
+	if len(songIDs) > 100 {
+		log.Errorf("Truncated playlist down to 100 songs for Spotify's benefit: %s", name)
+		songIDs = songIDs[0:100]
+	}
+
 	err := client.ReplacePlaylistTracks(userID, playlistID, songIDs...)
 	if err != nil {
 		return err

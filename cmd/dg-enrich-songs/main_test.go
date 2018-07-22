@@ -38,6 +38,12 @@ func TestSongsNeedingID(t *testing.T) {
 	assert.Equal(t, songs[1].ID, actualSongs[0].ID)
 }
 
+func TestTrimParenthesis(t *testing.T) {
+	assert.Equal(t, "Song", trimParenthesis("Song"))
+	assert.Equal(t, "Song", trimParenthesis("Song (So-and-so remix)"))
+	assert.Equal(t, "Song", trimParenthesis("Song (So-and-so remix) (Other)"))
+}
+
 func TestUpdateSong(t *testing.T) {
 	txn, err := db.Begin()
 	assert.NoError(t, err)

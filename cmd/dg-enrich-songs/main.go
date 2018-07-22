@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"regexp"
 	"sync/atomic"
 	"time"
 
@@ -57,6 +58,9 @@ var client *spotify.Client
 var conf Conf
 var db *sql.DB
 
+// See trimParenthesis.
+var trimParenthesisRE = regexp.MustCompile(`^(.*?) \(.*\)$`)
+
 func main() {
 	err := envdecode.Decode(&conf)
 	if err != nil {
@@ -105,11 +109,19 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 	}
 
 	if len(res.Tracks.Tracks) < 1 {
-		searchString = fmt.Sprintf("artist:%v %v",
-			song.Artist, song.Title)
-		res, err = client.Search(searchString, spotify.SearchTypeTrack)
-		if err != nil {
-			return err
+		// If we failed to find a result, here we try once more with any thing
+		// in parenthesis at the end of a song title stripped out. So if we had
+		// "Foo (Bar remix)", it's shortened down to just "Foo" and we search
+		// again.
+		alternateSearchString := fmt.Sprintf("artist:%v %v",
+			song.Artist, trimParenthesis(song.Title))
+		if alternateSearchString != searchString {
+			sleepWithJitter()
+
+			res, err = client.Search(searchString, spotify.SearchTypeTrack)
+			if err != nil {
+				return err
+			}
 		}
 
 		if len(res.Tracks.Tracks) < 1 {
@@ -250,6 +262,13 @@ func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
 
 	log.Infof("Found %v songs needing Spotify IDs", len(songs))
 	return songs, nil
+}
+
+// trimParenthesis strips anything in parenthesis at the end of a song title.
+// This is so that we can use a more general name to try and get a match on a
+// song that won't match in its literal state.
+func trimParenthesis(title string) string {
+	return trimParenthesisRE.ReplaceAllString(title, "$1")
 }
 
 func updateSong(txn *sql.Tx, song *deathguild.Song) error {

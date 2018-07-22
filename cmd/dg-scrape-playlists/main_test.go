@@ -14,6 +14,13 @@ func init() {
 	db = tt.DB
 }
 
+func TestExtractDay(t *testing.T) {
+	assert.Equal(t,
+		"2015-12-21",
+		extractDay(PlaylistLink("http://www.deathguild.com//playlist/2015-12-21")),
+	)
+}
+
 func TestScrapeIndex(t *testing.T) {
 	f, err := os.Open("../../testing/samples/playlists.html")
 	assert.NoError(t, err)
@@ -23,23 +30,41 @@ func TestScrapeIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t,
-		PlaylistLink("http://www.darkdb.com/deathguild/Playlist.aspx?date=1995-10-16"),
+		PlaylistLink("http://www.deathguild.com/playlist/1995-10-16"),
 		links[len(links)-1],
 	)
 }
 
 func TestScrapePlaylist(t *testing.T) {
-	f, err := os.Open("../../testing/samples/2016-09-26.html")
-	assert.NoError(t, err)
-	defer f.Close()
+	// Old format
+	{
+		f, err := os.Open("../../testing/samples/2016-09-26.html")
+		assert.NoError(t, err)
+		defer f.Close()
 
-	songs, err := scrapePlaylist(f)
-	assert.NoError(t, err)
+		songs, err := scrapePlaylist(f)
+		assert.NoError(t, err)
 
-	assert.Equal(t,
-		&deathguild.Song{Artist: "Panic Lift", Title: "The Path"},
-		songs[len(songs)-1],
-	)
+		assert.Equal(t,
+			&deathguild.Song{Artist: "Panic Lift", Title: "The Path"},
+			songs[len(songs)-1],
+		)
+	}
+
+	// New format
+	{
+		f, err := os.Open("../../testing/samples/2018-07-16.html")
+		assert.NoError(t, err)
+		defer f.Close()
+
+		songs, err := scrapePlaylist(f)
+		assert.NoError(t, err)
+
+		assert.Equal(t,
+			&deathguild.Song{Artist: "BT", Title: "Godspeed"},
+			songs[len(songs)-1],
+		)
+	}
 }
 
 func TestUpsertPlaylistAndSongs(t *testing.T) {

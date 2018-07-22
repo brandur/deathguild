@@ -3,11 +3,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html"
 	"io"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -23,10 +25,10 @@ const (
 	// sort of terrible to hardcode this, but we rate limit to make sure that
 	// the site isn't hit very hard, and only need to retrieve any given
 	// playlist one time.
-	darkdbURL = "http://www.darkdb.com/deathguild"
+	baseURL = "http://www.deathguild.com"
 
 	// The location of the playlist index.
-	indexURL = darkdbURL + "/DateList.aspx"
+	indexURL = baseURL + "/playdates"
 )
 
 // Conf contains configuration information for the command. It's extracted from
@@ -48,6 +50,8 @@ var conf Conf
 var db *sql.DB
 
 func main() {
+	log.SetLevel(log.DebugLevel)
+
 	err := envdecode.Decode(&conf)
 	if err != nil {
 		log.Fatal(err)
@@ -93,7 +97,7 @@ func scrapeIndex(r io.Reader) ([]PlaylistLink, error) {
 	var outErr error
 	var links []PlaylistLink
 
-	doc.Find(".ListLink").EachWithBreak(func(i int, s *goquery.Selection) bool {
+	doc.Find("#playlist table a").EachWithBreak(func(i int, s *goquery.Selection) bool {
 		link, ok := s.Attr("href")
 		if !ok {
 			outErr = fmt.Errorf("No href attribute for link: %v", s.Text())
@@ -112,21 +116,29 @@ func scrapeIndex(r io.Reader) ([]PlaylistLink, error) {
 	return links, nil
 }
 
-func handlePlaylist(link PlaylistLink) error {
-	u, err := url.Parse(string(link))
-	if err != nil {
-		return err
-	}
-	day := u.Query().Get("date")
+func extractDay(link PlaylistLink) string {
+	parts := strings.Split(string(link), "/")
+	return parts[len(parts)-1]
+}
+
+func handlePlaylist(link PlaylistLink) (retErr error) {
+	day := extractDay(link)
 
 	txn, err := db.Begin()
 	if err != nil {
-		return err
+		retErr = err
+		return
 	}
 	defer func() {
+		// Don't try to commit with an error because we'll end up overriding
+		// the more useful error message. Just fall through.
+		if retErr != nil {
+			return
+		}
+
 		err = txn.Commit()
 		if err != nil {
-			panic(err)
+			retErr = err
 		}
 	}()
 
@@ -140,24 +152,35 @@ func handlePlaylist(link PlaylistLink) error {
 
 	if playlistID != 0 {
 		log.Debugf("Playlist %v already handled; skipping", day)
-		return nil
+		retErr = nil
+		return
 	}
 
-	log.Debugf("Requesting playlist at: %v", darkdbURL+"/"+link)
-	resp, err := http.Get(darkdbURL + "/" + string(link))
+	playlistURL := string(baseURL + link)
+	log.Debugf("Requesting playlist at: %v", playlistURL)
+	resp, err := http.Get(playlistURL)
 	if err != nil {
-		return err
+		retErr = err
+		return
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		retErr = fmt.Errorf("Bad response when requesting: %s (status code = %v)\n",
+			playlistURL, resp.StatusCode)
+		return
+	}
+
 	songs, err := scrapePlaylist(resp.Body)
 	if err != nil {
-		return err
+		retErr = err
+		return
 	}
 
 	err = upsertPlaylistAndSongs(txn, day, songs)
 	if err != nil {
-		return err
+		retErr = err
+		return
 	}
 
 	// be kind and rate limit our requests
@@ -165,7 +188,8 @@ func handlePlaylist(link PlaylistLink) error {
 	log.Debugf("Sleeping %v seconds", t)
 	time.Sleep(time.Duration(t) * time.Second)
 
-	return nil
+	retErr = nil
+	return
 }
 
 func upsertPlaylistAndSongs(txn *sql.Tx, day string,
@@ -227,6 +251,7 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 	var outErr error
 	var songs []*deathguild.Song
 
+	// Old style playlists
 	doc.Find("table.Normal tr").EachWithBreak(func(i int, s *goquery.Selection) bool {
 		artist := s.Find("td:nth-child(1)").Text()
 		title := s.Find("td:nth-child(2)").Text()
@@ -235,6 +260,45 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 		if artist == "Artist" && title == "Title" {
 			return true
 		}
+
+		songs = append(songs, &deathguild.Song{Artist: artist, Title: title})
+		return true
+	})
+	if outErr != nil {
+		return nil, outErr
+	}
+
+	// New style playlists
+	doc.Find("div#playlist em").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		artist := s.Text()
+
+		allContent, err := s.Parent().Html()
+		if err != nil {
+			outErr = err
+			return false
+		}
+
+		// Unfortunately we're trying to parse Very Bad HTML which carries no
+		// semantic data whatsoever, so rather than traverse the DOM, we need
+		// to depend on a regexp hack to get titles out of the document.
+		//
+		// Be careful to:
+		//
+		//     1. Escape any HTML specific characters in the string (the call
+		//        to `Text` above will have unescaped them).
+		//     2. Escape any characters that are meaningful to a regexp (e.g., `+`).
+		rx := regexp.MustCompile(fmt.Sprintf(`<em>%s</em> - (.*?)<`,
+			regexp.QuoteMeta(html.EscapeString(artist))))
+
+		matches := rx.FindStringSubmatch(allContent)
+
+		if len(matches) < 2 {
+			outErr = fmt.Errorf("Failed to find title match for: %s", artist)
+			return false
+		}
+
+		// First index is the entire match, the second is our capture group.
+		title := matches[1]
 
 		songs = append(songs, &deathguild.Song{Artist: artist, Title: title})
 		return true

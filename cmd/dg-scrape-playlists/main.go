@@ -166,7 +166,7 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		retErr = fmt.Errorf("Bad response when requesting: %s (status code = %v)\n",
+		retErr = fmt.Errorf("bad response when requesting: %s (status code = %v)",
 			playlistURL, resp.StatusCode)
 		return
 	}

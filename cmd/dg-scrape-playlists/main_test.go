@@ -64,6 +64,13 @@ func TestScrapePlaylist(t *testing.T) {
 			&deathguild.Song{Artist: "BT", Title: "Godspeed"},
 			songs[len(songs)-1],
 		)
+
+		// Make sure HTML unescaping in artist names and titles works (I
+		// manually added the `&amp;` to the test data in the title here).
+		assert.Equal(t,
+			&deathguild.Song{Artist: "Simon & Garfunkel", Title: "I Am A Rock &"},
+			songs[0],
+		)
 	}
 }
 

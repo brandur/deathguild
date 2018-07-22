@@ -298,7 +298,7 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 		}
 
 		// First index is the entire match, the second is our capture group.
-		title := matches[1]
+		title := html.UnescapeString(matches[1])
 
 		songs = append(songs, &deathguild.Song{Artist: artist, Title: title})
 		return true

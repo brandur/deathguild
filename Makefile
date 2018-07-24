@@ -70,6 +70,12 @@ else
 	# No AWS access key. Skipping deploy.
 endif
 
+database-compress: check-target-dir
+	gzip -c --force $(TARGET_DIR)/deathguild.sql > $(TARGET_DIR)/deathguild.sql.gz
+
+database-decompress: check-target-dir
+	gzip -d --force --stdout $(TARGET_DIR)/deathguild.sql.gz > $(TARGET_DIR)/deathguild.sql
+
 # Produces a database backup. This is so that we can throw one in S3 during
 # deployment in case we lose a database or a database provider.
 database-dump: check-target-dir

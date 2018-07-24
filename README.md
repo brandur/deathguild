@@ -88,7 +88,8 @@ Then to dump it back:
 export S3_BUCKET=deathguild-playlists
 
 make database-dump
-aws s3 cp $TARGET_DIR/deathguild.sql s3://$S3_BUCKET/ --acl public-read
+make database-compress
+aws s3 cp $TARGET_DIR/deathguild.sql.gz s3://$S3_BUCKET/ --acl public-read
 ```
 
 ## Testing

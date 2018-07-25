@@ -177,6 +177,16 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 		return
 	}
 
+	// If we got a playlist of zero songs, that probably means our DOM/HTML
+	// selectors aren't working anymore because the site has changed its
+	// format. Error and tell somebody.
+	if len(songs) == 0 {
+		retErr = fmt.Errorf(
+			"found zero-length playlist; this probably means that scraping logic is broken",
+		)
+		return
+	}
+
 	err = upsertPlaylistAndSongs(txn, day, songs)
 	if err != nil {
 		retErr = err

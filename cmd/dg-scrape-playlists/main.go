@@ -205,7 +205,7 @@ func upsertPlaylistAndSongs(txn *sql.Tx, day string,
 		day,
 	).Scan(&playlistID)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error inserting into `playlists`: %v", err)
 	}
 
 	for i, song := range songs {
@@ -221,7 +221,7 @@ func upsertPlaylistAndSongs(txn *sql.Tx, day string,
 			song.Title,
 		).Scan(&songID)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error inserting into `songs`: %v", err)
 		}
 
 		_, err = txn.Exec(`
@@ -234,7 +234,7 @@ func upsertPlaylistAndSongs(txn *sql.Tx, day string,
 			i,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error inserting into `xplaylist_songs`: %v", err)
 		}
 	}
 

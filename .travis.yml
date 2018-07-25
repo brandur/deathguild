@@ -49,8 +49,6 @@ script:
 
   - make database-dump &&
     make database-compress &&
-    # Remove the larger non-compressed file so we don't waste the bandwidth
-    # everytime.
     rm -f public/deathguild.sql &&
     make build-site &&
     make deploy-site

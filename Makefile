@@ -88,7 +88,7 @@ endif
 # accesses the dump on a public URL), deployment is only done from the master
 # branch when AWS keys are available.
 database-fetch: check-target-dir
-	curl -o $(TARGET_DIR)/deathguild.sql https://deathguild-playlists.s3.amazonaws.com/deathguild.sql
+	curl -o $(TARGET_DIR)/deathguild.sql.gz https://deathguild-playlists.s3.amazonaws.com/deathguild.sql.gz
 
 database-restore: check-target-dir
 ifdef DATABASE_URL

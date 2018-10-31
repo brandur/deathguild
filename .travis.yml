@@ -13,10 +13,10 @@ addons:
   postgresql: "9.5"
 
 before_install:
-  - go get -u golang.org/x/lint/golint
+  - travis_retry go get -u golang.org/x/lint/golint
 
 install:
-  - pip install --user awscli
+  - travis_retry pip install --user awscli
 
 before_script:
   - psql -U postgres -c 'CREATE DATABASE "deathguild";'

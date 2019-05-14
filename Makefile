@@ -101,7 +101,7 @@ ifdef REFRESH_TOKEN
 endif
 
 install:
-	go install $(shell go list ./... | egrep -v '/vendor/')
+	go install ./...
 
 lint:
 	$(GOPATH)/bin/golint -set_exit_status `go list ./... | grep -v /vendor/`
@@ -120,10 +120,14 @@ TEST_DATABASE_URL ?= postgres://localhost/deathguild-test
 
 test:
 	psql $(TEST_DATABASE_URL) < db/structure.sql > /dev/null
-	go test $(shell go list ./... | egrep -v '/vendor/')
+	go test ./...
+
+test-bypass-cache:
+	psql $(TEST_DATABASE_URL) < db/structure.sql > /dev/null
+	go test -count=1 ./...
 
 vet:
-	go vet $(shell go list ./... | egrep -v '/vendor/')
+	go vet ./...
 
 # alias
 watch: watch-site

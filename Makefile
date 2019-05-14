@@ -109,12 +109,6 @@ lint:
 scrape-playlists:
 	$(GOPATH)/bin/dg-scrape-playlists
 
-# alias
-serve: serve-site
-
-serve-site:
-	$(GOPATH)/bin/dg-serve-site
-
 # Read from env or fall back.
 TEST_DATABASE_URL ?= postgres://localhost/deathguild-test
 

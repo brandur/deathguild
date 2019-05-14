@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/brandur/deathguild/modules/dgcommon"
-	tt "github.com/brandur/deathguild/testing"
+	"github.com/brandur/deathguild/modules/dgtesting"
 	assert "github.com/stretchr/testify/require"
 )
 
 func init() {
-	db = tt.DB
+	db = dgtesting.DB
 }
 
 func TestSongsNeedingID(t *testing.T) {
@@ -28,7 +28,7 @@ func TestSongsNeedingID(t *testing.T) {
 	}
 
 	for _, song := range songs {
-		tt.InsertSong(t, txn, song)
+		dgtesting.InsertSong(t, txn, song)
 	}
 
 	actualSongs, err := songsNeedingID(txn, 1000)
@@ -53,7 +53,7 @@ func TestUpdateSong(t *testing.T) {
 	}()
 
 	song := dgcommon.Song{Artist: "Panic Lift", Title: "The Path"}
-	tt.InsertSong(t, txn, &song)
+	dgtesting.InsertSong(t, txn, &song)
 
 	//
 	// Should update timestamp but without ID if necessary.

@@ -1,10 +1,10 @@
-package testing
+package dgtesting
 
 import (
 	"database/sql"
 	"testing"
 
-	"github.com/brandur/deathguild"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/joeshaw/envdecode"
 	assert "github.com/stretchr/testify/require"
 
@@ -52,7 +52,7 @@ func init() {
 }
 
 // InsertPlaylist puts a playlist into the database.
-func InsertPlaylist(t *testing.T, txn *sql.Tx, playlist *deathguild.Playlist) {
+func InsertPlaylist(t *testing.T, txn *sql.Tx, playlist *dgcommon.Playlist) {
 	var spotifyID *string
 	if playlist.SpotifyID != "" {
 		spotifyID = &playlist.SpotifyID
@@ -69,7 +69,7 @@ func InsertPlaylist(t *testing.T, txn *sql.Tx, playlist *deathguild.Playlist) {
 }
 
 // InsertSong puts a song into the database.
-func InsertSong(t *testing.T, txn *sql.Tx, song *deathguild.Song) {
+func InsertSong(t *testing.T, txn *sql.Tx, song *dgcommon.Song) {
 	var spotifyID *string
 	if song.SpotifyID != "" {
 		spotifyID = &song.SpotifyID

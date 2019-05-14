@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	tt "github.com/brandur/deathguild/testing"
 	"github.com/brandur/deathguild/modules/dgcommon"
+	"github.com/brandur/deathguild/modules/dgtesting"
 	assert "github.com/stretchr/testify/require"
 )
 
 func init() {
-	db = tt.DB
+	db = dgtesting.DB
 }
 
 func TestExtractDay(t *testing.T) {
@@ -22,7 +22,7 @@ func TestExtractDay(t *testing.T) {
 }
 
 func TestScrapeIndex(t *testing.T) {
-	f, err := os.Open("../../testing/samples/playlists.html")
+	f, err := os.Open("../../modules/dgtesting/samples/playlists.html")
 	assert.NoError(t, err)
 	defer f.Close()
 
@@ -38,7 +38,7 @@ func TestScrapeIndex(t *testing.T) {
 func TestScrapePlaylist(t *testing.T) {
 	// Old format
 	{
-		f, err := os.Open("../../testing/samples/2016-09-26.html")
+		f, err := os.Open("../../modules/dgtesting/samples/2016-09-26.html")
 		assert.NoError(t, err)
 		defer f.Close()
 
@@ -53,7 +53,7 @@ func TestScrapePlaylist(t *testing.T) {
 
 	// New format
 	{
-		f, err := os.Open("../../testing/samples/2018-07-16.html")
+		f, err := os.Open("../../modules/dgtesting/samples/2018-07-16.html")
 		assert.NoError(t, err)
 		defer f.Close()
 

@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/brandur/deathguild/modules/dgcommon"
-	tt "github.com/brandur/deathguild/testing"
+	"github.com/brandur/deathguild/modules/dgtesting"
 	assert "github.com/stretchr/testify/require"
 )
 
 func init() {
-	db = tt.DB
+	db = dgtesting.DB
 }
 
 func TestPlaylistsNeedingID(t *testing.T) {
@@ -28,7 +28,7 @@ func TestPlaylistsNeedingID(t *testing.T) {
 	}
 
 	for _, playlist := range playlists {
-		tt.InsertPlaylist(t, txn, playlist)
+		dgtesting.InsertPlaylist(t, txn, playlist)
 	}
 
 	actualPlaylist, err := playlistsNeedingID(txn, 1000)
@@ -47,7 +47,7 @@ func TestUpdatePlaylist(t *testing.T) {
 	}()
 
 	playlist := dgcommon.Playlist{Day: time.Now()}
-	tt.InsertPlaylist(t, txn, &playlist)
+	dgtesting.InsertPlaylist(t, txn, &playlist)
 
 	//
 	// Should update without ID if necessary.

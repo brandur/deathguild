@@ -14,7 +14,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/deathguild"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
@@ -83,7 +83,7 @@ func main() {
 		}))
 	}
 
-	if !deathguild.RunTasks(conf.Concurrency, tasks) {
+	if !dgcommon.RunTasks(conf.Concurrency, tasks) {
 		defer os.Exit(1)
 	}
 }
@@ -203,7 +203,7 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 }
 
 func upsertPlaylistAndSongs(txn *sql.Tx, day string,
-	songs []*deathguild.Song) error {
+	songs []*dgcommon.Song) error {
 
 	var playlistID int
 	err := txn.QueryRow(`
@@ -252,14 +252,14 @@ func upsertPlaylistAndSongs(txn *sql.Tx, day string,
 	return nil
 }
 
-func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
+func scrapePlaylist(r io.Reader) ([]*dgcommon.Song, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, err
 	}
 
 	var outErr error
-	var songs []*deathguild.Song
+	var songs []*dgcommon.Song
 
 	// Old style playlists
 	doc.Find("table.Normal tr").EachWithBreak(func(i int, s *goquery.Selection) bool {
@@ -271,7 +271,7 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 			return true
 		}
 
-		songs = append(songs, &deathguild.Song{Artist: artist, Title: title})
+		songs = append(songs, &dgcommon.Song{Artist: artist, Title: title})
 		return true
 	})
 	if outErr != nil {
@@ -310,7 +310,7 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 		// First index is the entire match, the second is our capture group.
 		title := html.UnescapeString(matches[1])
 
-		songs = append(songs, &deathguild.Song{Artist: artist, Title: title})
+		songs = append(songs, &dgcommon.Song{Artist: artist, Title: title})
 		return true
 	})
 	if outErr != nil {

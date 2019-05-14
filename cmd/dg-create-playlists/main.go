@@ -6,7 +6,7 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/deathguild"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
@@ -76,7 +76,7 @@ func main() {
 		goto done
 	}
 
-	client = deathguild.GetSpotifyClient(
+	client = dgcommon.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	// A user is needed for some API operations, so just cache one for the
@@ -115,7 +115,7 @@ func createPlaylist(name string) (spotify.ID, error) {
 }
 
 func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
-	playlist *deathguild.Playlist) error {
+	playlist *dgcommon.Playlist) error {
 
 	name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
 
@@ -212,7 +212,7 @@ func getPlaylistMap() (map[string]spotify.ID, error) {
 	return playlistMap, nil
 }
 
-func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) {
+func playlistsNeedingID(txn *sql.Tx, limit int) ([]*dgcommon.Playlist, error) {
 	rows, err := txn.Query(`
 		SELECT id, day
 		FROM playlists
@@ -227,10 +227,10 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) 
 	}
 	defer rows.Close()
 
-	var playlists []*deathguild.Playlist
+	var playlists []*dgcommon.Playlist
 
 	for rows.Next() {
-		var playlist deathguild.Playlist
+		var playlist dgcommon.Playlist
 		err = rows.Scan(
 			&playlist.ID,
 			&playlist.Day,
@@ -284,7 +284,7 @@ func runLoop() (bool, int, error) {
 		}))
 	}
 
-	if !deathguild.RunTasks(conf.Concurrency, tasks) {
+	if !dgcommon.RunTasks(conf.Concurrency, tasks) {
 		return true, 1, nil
 	}
 
@@ -292,7 +292,7 @@ func runLoop() (bool, int, error) {
 	return false, 0, nil
 }
 
-func updatePlaylist(txn *sql.Tx, playlist *deathguild.Playlist) error {
+func updatePlaylist(txn *sql.Tx, playlist *dgcommon.Playlist) error {
 	// We want a NULL in this field with we didn't get an ID.
 	var spotifyID *string
 	if playlist.SpotifyID != "" {

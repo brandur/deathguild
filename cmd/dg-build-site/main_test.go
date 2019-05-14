@@ -3,13 +3,13 @@ package main
 import (
 	"testing"
 
-	"github.com/brandur/deathguild"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	assert "github.com/stretchr/testify/require"
 )
 
 func TestPlaylistInfo(t *testing.T) {
-	playlist := &deathguild.Playlist{
-		Songs: []*deathguild.Song{
+	playlist := &dgcommon.Playlist{
+		Songs: []*dgcommon.Song{
 			{Artist: "Depeche Mode", Title: "Two Minute Warning", SpotifyID: "spotify-id"},
 			{Artist: "Imperative Reaction", Title: "You Remain"},
 		},
@@ -22,14 +22,14 @@ func TestPlaylistInfo(t *testing.T) {
 
 func TestSpotifyPlaylistLink(t *testing.T) {
 	conf.SpotifyUser = "fyrerise"
-	playlist := &deathguild.Playlist{SpotifyID: "spotify-id"}
+	playlist := &dgcommon.Playlist{SpotifyID: "spotify-id"}
 
 	assert.Equal(t, "https://open.spotify.com/user/fyrerise/playlist/spotify-id",
 		spotifyPlaylistLink(playlist))
 }
 
 func TestSpotifySongLink(t *testing.T) {
-	song := &deathguild.Song{SpotifyID: "spotify-id"}
+	song := &dgcommon.Song{SpotifyID: "spotify-id"}
 
 	assert.Equal(t, "https://open.spotify.com/track/spotify-id",
 		spotifySongLink(song))

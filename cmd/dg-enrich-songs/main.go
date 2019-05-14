@@ -10,7 +10,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/deathguild"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
@@ -72,7 +72,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	client = deathguild.GetSpotifyClient(
+	client = dgcommon.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	for {
@@ -98,7 +98,7 @@ func artistsToString(artists []spotify.SimpleArtist) string {
 	return out
 }
 
-func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
+func retrieveID(txn *sql.Tx, song *dgcommon.Song, numNotFound *int64) error {
 	song.SpotifyCheckedAt = time.Now()
 
 	searchString := fmt.Sprintf("artist:%v %v",
@@ -189,7 +189,7 @@ func runLoop() (bool, int, error) {
 		}))
 	}
 
-	if !deathguild.RunTasks(conf.Concurrency, tasks) {
+	if !dgcommon.RunTasks(conf.Concurrency, tasks) {
 		return true, 1, nil
 	}
 
@@ -215,7 +215,7 @@ func sleepWithJitter() {
 	time.Sleep(time.Duration(t) * time.Second)
 }
 
-func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
+func songsNeedingID(txn *sql.Tx, limit int) ([]*dgcommon.Song, error) {
 	rows, err := txn.Query(`
 		SELECT id, artist, title
 		FROM songs
@@ -245,10 +245,10 @@ func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
 	}
 	defer rows.Close()
 
-	var songs []*deathguild.Song
+	var songs []*dgcommon.Song
 
 	for rows.Next() {
-		var song deathguild.Song
+		var song dgcommon.Song
 		err = rows.Scan(
 			&song.ID,
 			&song.Artist,
@@ -271,7 +271,7 @@ func trimParenthesis(title string) string {
 	return trimParenthesisRE.ReplaceAllString(title, "$1")
 }
 
-func updateSong(txn *sql.Tx, song *deathguild.Song) error {
+func updateSong(txn *sql.Tx, song *dgcommon.Song) error {
 	// We want a NULL in this field with we didn't get an ID.
 	var spotifyID *string
 	if song.SpotifyID != "" {

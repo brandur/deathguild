@@ -1,4 +1,4 @@
-package deathguild
+package dgcommon
 
 import (
 	"testing"

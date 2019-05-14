@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brandur/deathguild"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	tt "github.com/brandur/deathguild/testing"
 	assert "github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ func TestSongsNeedingID(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	songs := []*deathguild.Song{
+	songs := []*dgcommon.Song{
 		{Artist: "Depeche Mode", Title: "Two Minute Warning", SpotifyID: "spotify-id"},
 		{Artist: "Imperative Reaction", Title: "You Remain"},
 	}
@@ -52,7 +52,7 @@ func TestUpdateSong(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	song := deathguild.Song{Artist: "Panic Lift", Title: "The Path"}
+	song := dgcommon.Song{Artist: "Panic Lift", Title: "The Path"}
 	tt.InsertSong(t, txn, &song)
 
 	//

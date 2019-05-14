@@ -11,7 +11,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/deathguild"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/brandur/sorg/assets"
 	"github.com/brandur/sorg/pool"
 	"github.com/joeshaw/envdecode"
@@ -50,7 +50,7 @@ type Conf struct {
 
 // PlaylistYear holds playlists grouped by year.
 type PlaylistYear struct {
-	Playlists []*deathguild.Playlist
+	Playlists []*dgcommon.Playlist
 	Year      int
 }
 
@@ -68,12 +68,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = deathguild.CreateOutputDirs(conf.TargetDir)
+	err = dgcommon.CreateOutputDirs(conf.TargetDir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	versionedAssetsDir := path.Join(conf.TargetDir, "assets", deathguild.Release)
+	versionedAssetsDir := path.Join(conf.TargetDir, "assets", dgcommon.Release)
 
 	txn, err := db.Begin()
 	if err != nil {
@@ -122,7 +122,7 @@ func main() {
 		}
 	}
 
-	if !deathguild.RunTasks(conf.Concurrency, tasks) {
+	if !dgcommon.RunTasks(conf.Concurrency, tasks) {
 		defer os.Exit(1)
 	}
 }
@@ -143,7 +143,7 @@ func buildIndex(playlistYears []*PlaylistYear) error {
 	return nil
 }
 
-func buildPlaylist(playlist *deathguild.Playlist) error {
+func buildPlaylist(playlist *dgcommon.Playlist) error {
 	txn, err := db.Begin()
 	if err != nil {
 		return err
@@ -162,7 +162,7 @@ func buildPlaylist(playlist *deathguild.Playlist) error {
 	return nil
 }
 
-func buildPlaylistInTransaction(txn *sql.Tx, playlist *deathguild.Playlist) error {
+func buildPlaylistInTransaction(txn *sql.Tx, playlist *dgcommon.Playlist) error {
 	err := playlist.FetchSongs(txn)
 	if err != nil {
 		return err
@@ -244,7 +244,7 @@ func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
 	var playlistYears []*PlaylistYear
 
 	for rows.Next() {
-		var playlist deathguild.Playlist
+		var playlist dgcommon.Playlist
 		err = rows.Scan(
 			&playlist.ID,
 			&playlist.Day,
@@ -280,7 +280,7 @@ func linkFonts() error {
 }
 
 // Returns some basic length information about the playlist.
-func playlistInfo(playlist *deathguild.Playlist) string {
+func playlistInfo(playlist *dgcommon.Playlist) string {
 	var numWithSpotifyID int
 	for _, song := range playlist.Songs {
 		if song.SpotifyID != "" {
@@ -318,7 +318,7 @@ func renderTemplate(view, target string, locals map[string]interface{}) error {
 	data := map[string]interface{}{
 		"GoogleAnalyticsID": conf.GoogleAnalyticsID,
 		"LocalFonts":        conf.LocalFonts,
-		"Release":           deathguild.Release,
+		"Release":           dgcommon.Release,
 	}
 
 	// Override our basic data map with anything that the specific page sent
@@ -335,12 +335,12 @@ func renderTemplate(view, target string, locals map[string]interface{}) error {
 	return nil
 }
 
-func spotifyPlaylistLink(playlist *deathguild.Playlist) string {
+func spotifyPlaylistLink(playlist *dgcommon.Playlist) string {
 	return "https://open.spotify.com/user/" + conf.SpotifyUser +
 		"/playlist/" + playlist.SpotifyID
 }
 
-func spotifySongLink(song *deathguild.Song) string {
+func spotifySongLink(song *dgcommon.Song) string {
 	return "https://open.spotify.com/track/" + song.SpotifyID
 }
 

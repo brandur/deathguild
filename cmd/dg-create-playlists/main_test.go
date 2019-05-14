@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brandur/deathguild"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	tt "github.com/brandur/deathguild/testing"
 	assert "github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ func TestPlaylistsNeedingID(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	playlists := []*deathguild.Playlist{
+	playlists := []*dgcommon.Playlist{
 		{Day: time.Now(), SpotifyID: "spotify-id"},
 		{Day: time.Now().Add(30 * 24 * time.Hour)},
 	}
@@ -46,7 +46,7 @@ func TestUpdatePlaylist(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	playlist := deathguild.Playlist{Day: time.Now()}
+	playlist := dgcommon.Playlist{Day: time.Now()}
 	tt.InsertPlaylist(t, txn, &playlist)
 
 	//

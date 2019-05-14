@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/deathguild"
 	tt "github.com/brandur/deathguild/testing"
+	"github.com/brandur/deathguild/modules/dgcommon"
 	assert "github.com/stretchr/testify/require"
 )
 
@@ -46,7 +46,7 @@ func TestScrapePlaylist(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t,
-			&deathguild.Song{Artist: "Panic Lift", Title: "The Path"},
+			&dgcommon.Song{Artist: "Panic Lift", Title: "The Path"},
 			songs[len(songs)-1],
 		)
 	}
@@ -61,14 +61,14 @@ func TestScrapePlaylist(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t,
-			&deathguild.Song{Artist: "BT", Title: "Godspeed"},
+			&dgcommon.Song{Artist: "BT", Title: "Godspeed"},
 			songs[len(songs)-1],
 		)
 
 		// Make sure HTML unescaping in artist names and titles works (I
 		// manually added the `&amp;` to the test data in the title here).
 		assert.Equal(t,
-			&deathguild.Song{Artist: "Simon & Garfunkel", Title: "I Am A Rock &"},
+			&dgcommon.Song{Artist: "Simon & Garfunkel", Title: "I Am A Rock &"},
 			songs[0],
 		)
 	}
@@ -83,7 +83,7 @@ func TestUpsertPlaylistAndSongs(t *testing.T) {
 	}()
 
 	day := "2016-01-01"
-	songs := []*deathguild.Song{
+	songs := []*dgcommon.Song{
 		{Artist: "Depeche Mode", Title: "Two Minute Warning"},
 		{Artist: "Imperative Reaction", Title: "You Remain"},
 	}

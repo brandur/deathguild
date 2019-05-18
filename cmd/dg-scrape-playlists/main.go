@@ -82,7 +82,7 @@ func main() {
 
 		name := fmt.Sprintf("playlist: %v", link)
 		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
-			return true, handlePlaylist(link)
+			return handlePlaylist(link)
 		})
 	}
 
@@ -129,13 +129,14 @@ func extractDay(link PlaylistLink) string {
 	return parts[len(parts)-1]
 }
 
-func handlePlaylist(link PlaylistLink) (retErr error) {
+func handlePlaylist(link PlaylistLink) (bool, error) {
+	var retErr error
 	day := extractDay(link)
 
 	txn, err := db.Begin()
 	if err != nil {
 		retErr = err
-		return
+		return false, retErr
 	}
 	defer func() {
 		// Don't try to commit with an error because we'll end up overriding
@@ -159,9 +160,9 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 	).Scan(&playlistID)
 
 	if playlistID != 0 {
-		log.Debugf("Playlist %v already handled; skipping", day)
+		log.Infof("Playlist %v already handled; skipping", day)
 		retErr = nil
-		return
+		return true, retErr
 	}
 
 	playlistURL := string(baseURL + link)
@@ -169,20 +170,20 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 	resp, err := http.Get(playlistURL)
 	if err != nil {
 		retErr = err
-		return
+		return true, retErr
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		retErr = fmt.Errorf("bad response when requesting: %s (status code = %v)",
 			playlistURL, resp.StatusCode)
-		return
+		return true, retErr
 	}
 
 	songs, err := scrapePlaylist(resp.Body)
 	if err != nil {
 		retErr = err
-		return
+		return true, retErr
 	}
 
 	// If we got a playlist of zero songs, that probably means our DOM/HTML
@@ -192,13 +193,13 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 		retErr = fmt.Errorf(
 			"found zero-length playlist; this probably means that scraping logic is broken",
 		)
-		return
+		return true, retErr
 	}
 
 	err = upsertPlaylistAndSongs(txn, day, songs)
 	if err != nil {
 		retErr = err
-		return
+		return true, retErr
 	}
 
 	// be kind and rate limit our requests
@@ -207,7 +208,7 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 	time.Sleep(time.Duration(t) * time.Second)
 
 	retErr = nil
-	return
+	return true, nil
 }
 
 func upsertPlaylistAndSongs(txn *sql.Tx, day string,

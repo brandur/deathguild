@@ -223,6 +223,12 @@ var readDirCache = gocache.New(5*time.Minute, 10*time.Minute)
 //
 //////////////////////////////////////////////////////////////////////////////
 
+// PlaylistYear holds playlists grouped by year.
+type PlaylistYear struct {
+	Playlists []*dgcommon.Playlist
+	Year      int
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -232,12 +238,6 @@ var readDirCache = gocache.New(5*time.Minute, 10*time.Minute)
 //
 //
 //////////////////////////////////////////////////////////////////////////////
-
-// PlaylistYear holds playlists grouped by year.
-type PlaylistYear struct {
-	Playlists []*dgcommon.Playlist
-	Year      int
-}
 
 func compileJavascripts(c *modulir.Context, sourceDir, target string) (bool, error) {
 	sources, err := readDirCached(c, sourceDir, nil)

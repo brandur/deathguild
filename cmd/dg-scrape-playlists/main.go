@@ -77,6 +77,9 @@ func main() {
 	pool := modulir.NewPool(log, poolConcurrency)
 	defer pool.Stop()
 
+	log.Infof("Starting work round")
+	pool.StartRound()
+
 	for _, l := range links {
 		link := l
 

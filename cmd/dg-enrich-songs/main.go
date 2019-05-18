@@ -186,6 +186,8 @@ func runLoop(pool *modulir.Pool) (bool, int, error) {
 	}
 
 	var numNotFound int64
+
+	log.Infof("Starting work round")
 	pool.StartRound()
 
 	for _, s := range songs {
@@ -203,7 +205,7 @@ func runLoop(pool *modulir.Pool) (bool, int, error) {
 	pool.LogSlowest()
 
 	if pool.JobsErrored != nil {
-		return true, 0, fmt.Errorf("%v job(s) errored occurred during last loop",
+		return true, 0, fmt.Errorf("%v job(s) errored occurred during last round",
 			len(pool.JobsErrored))
 	}
 

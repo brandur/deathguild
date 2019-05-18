@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/brandur/modulir"
 	"github.com/brandur/deathguild/modules/dgcommon"
+	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
 	assert "github.com/stretchr/testify/require"
 

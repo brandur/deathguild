@@ -15,8 +15,8 @@ import (
 	"github.com/brandur/modulir/modules/mace"
 	"github.com/brandur/modulir/modules/mfile"
 	_ "github.com/lib/pq"
-	"github.com/yosssi/ace"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/yosssi/ace"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -31,7 +31,7 @@ import (
 
 const (
 	layoutsMain = "./layouts/main.ace"
-	viewsDir = "./views"
+	viewsDir    = "./views"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -159,7 +159,6 @@ func build(c *modulir.Context) []error {
 	//
 	// Playlists
 	//
-
 
 	for _, playlistYear := range playlistYears {
 		for _, p := range playlistYear.Playlists {
@@ -361,8 +360,8 @@ func renderIndex(c *modulir.Context, playlistYears []*PlaylistYear) (bool, error
 
 	err := renderTemplate(
 		c,
-		viewsDir + "/index.ace",
-		c.TargetDir + "/index.html",
+		viewsDir+"/index.ace",
+		c.TargetDir+"/index.html",
 		map[string]interface{}{
 			"PlaylistYears": playlistYears,
 			"Title":         "Death Guild Spotify Playlists",
@@ -402,7 +401,7 @@ func renderPlaylist(c *modulir.Context, playlist *dgcommon.Playlist) (bool, erro
 }
 
 func renderPlaylistInTransaction(c *modulir.Context, txn *sql.Tx,
-		playlist *dgcommon.Playlist) error {
+	playlist *dgcommon.Playlist) error {
 
 	err := playlist.FetchSongs(txn)
 	if err != nil {
@@ -411,8 +410,8 @@ func renderPlaylistInTransaction(c *modulir.Context, txn *sql.Tx,
 
 	err = renderTemplate(
 		c,
-		viewsDir + "/playlist.ace",
-		c.TargetDir + "/playlists/" + playlist.FormattedDay(),
+		viewsDir+"/playlist.ace",
+		c.TargetDir+"/playlists/"+playlist.FormattedDay(),
 		map[string]interface{}{
 			"Playlist": playlist,
 			"Title":    "Playlist for " + playlist.FormattedDay(),

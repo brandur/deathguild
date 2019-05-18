@@ -56,14 +56,20 @@ func build(c *modulir.Context) []error {
 	versionedAssetsDir := path.Join(conf.TargetDir, "assets", dgcommon.Release)
 
 	// Open database connection and transaction
-	var err error
-	db, err = sql.Open("postgres", conf.DatabaseURL)
-	if err != nil {
-		return []error{err}
-	}
-	txn, err := db.Begin()
-	if err != nil {
-		return []error{err}
+	var db *sql.DB
+	var txn *sql.Tx
+	{
+		var err error
+
+		db, err = sql.Open("postgres", conf.DatabaseURL)
+		if err != nil {
+			return []error{err}
+		}
+
+		txn, err = db.Begin()
+		if err != nil {
+			return []error{err}
+		}
 	}
 	defer func() {
 		if err := txn.Commit(); err != nil {
@@ -166,7 +172,7 @@ func build(c *modulir.Context) []error {
 
 			name := fmt.Sprintf("playlist: %v", playlist.FormattedDay())
 			c.AddJob(name, func() (bool, error) {
-				return renderPlaylist(c, playlist)
+				return renderPlaylist(c, db, playlist)
 			})
 		}
 	}
@@ -195,9 +201,6 @@ func build(c *modulir.Context) []error {
 //
 //
 //////////////////////////////////////////////////////////////////////////////
-
-// Connection to the database where we save and fetch information.
-var db *sql.DB
 
 // List of partial views. If any of these changes we rebuild pretty much
 // everything. Even though some of those changes will false positives, the
@@ -370,7 +373,7 @@ func renderIndex(c *modulir.Context, playlistYears []*PlaylistYear) (bool, error
 	return true, err
 }
 
-func renderPlaylist(c *modulir.Context, playlist *dgcommon.Playlist) (bool, error) {
+func renderPlaylist(c *modulir.Context, db *sql.DB, playlist *dgcommon.Playlist) (bool, error) {
 	viewsChanged := c.ChangedAny(append(
 		[]string{
 			layoutsMain,

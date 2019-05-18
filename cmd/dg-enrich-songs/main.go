@@ -9,9 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/deathguild"
-	"github.com/brandur/sorg/pool"
+	"github.com/brandur/deathguild/modules/dgcommon"
+	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 	"github.com/zmb3/spotify"
@@ -23,6 +22,9 @@ import (
 // we encounter rate limiting from Spotify, we'll at least make some forward
 // progress.
 const batchSize = 20
+
+// Concurrency level to run job pool at.
+const poolConcurrency = batchSize
 
 // Conf contains configuration information for the command. It's extracted from
 // environment variables.
@@ -57,6 +59,7 @@ type Conf struct {
 var client *spotify.Client
 var conf Conf
 var db *sql.DB
+var log modulir.LoggerInterface = &modulir.Logger{Level: modulir.LevelInfo}
 
 // See trimParenthesis.
 var trimParenthesisRE = regexp.MustCompile(`^(.*?) \(.*\)$`)
@@ -64,21 +67,24 @@ var trimParenthesisRE = regexp.MustCompile(`^(.*?) \(.*\)$`)
 func main() {
 	err := envdecode.Decode(&conf)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	db, err = sql.Open("postgres", conf.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
-	client = deathguild.GetSpotifyClient(
+	pool := modulir.NewPool(log, poolConcurrency)
+	defer pool.Stop()
+
+	client = dgcommon.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	for {
-		done, exitCode, err := runLoop()
+		done, exitCode, err := runLoop(pool)
 		if err != nil {
-			log.Fatal(err)
+			dgcommon.ExitWithError(err)
 		}
 		if done {
 			defer os.Exit(exitCode)
@@ -98,7 +104,7 @@ func artistsToString(artists []spotify.SimpleArtist) string {
 	return out
 }
 
-func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
+func retrieveID(txn *sql.Tx, song *dgcommon.Song, numNotFound *int64) error {
 	song.SpotifyCheckedAt = time.Now()
 
 	searchString := fmt.Sprintf("artist:%v %v",
@@ -156,7 +162,7 @@ func retrieveID(txn *sql.Tx, song *deathguild.Song, numNotFound *int64) error {
 	return nil
 }
 
-func runLoop() (bool, int, error) {
+func runLoop(pool *modulir.Pool) (bool, int, error) {
 	txn, err := db.Begin()
 	if err != nil {
 		return false, 0, err
@@ -179,18 +185,28 @@ func runLoop() (bool, int, error) {
 		return true, 0, nil
 	}
 
-	var tasks []*pool.Task
 	var numNotFound int64
 
-	for _, song := range songs {
-		s := song
-		tasks = append(tasks, pool.NewTask(func() error {
-			return retrieveID(txn, s, &numNotFound)
-		}))
+	log.Infof("Starting work round")
+	pool.StartRound()
+
+	for _, s := range songs {
+		song := s
+
+		name := fmt.Sprintf("song: %v (%v - %v)",
+			song.SpotifyID, song.Artist, song.Title)
+		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
+			return true, retrieveID(txn, song, &numNotFound)
+		})
 	}
 
-	if !deathguild.RunTasks(conf.Concurrency, tasks) {
-		return true, 1, nil
+	pool.Wait()
+	pool.LogErrors()
+	pool.LogSlowest()
+
+	if pool.JobsErrored != nil {
+		return true, 0, fmt.Errorf("%v job(s) errored occurred during last round",
+			len(pool.JobsErrored))
 	}
 
 	log.Infof("Retrieved %v Spotify ID(s); failed to find %v",
@@ -215,7 +231,7 @@ func sleepWithJitter() {
 	time.Sleep(time.Duration(t) * time.Second)
 }
 
-func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
+func songsNeedingID(txn *sql.Tx, limit int) ([]*dgcommon.Song, error) {
 	rows, err := txn.Query(`
 		SELECT id, artist, title
 		FROM songs
@@ -245,10 +261,10 @@ func songsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Song, error) {
 	}
 	defer rows.Close()
 
-	var songs []*deathguild.Song
+	var songs []*dgcommon.Song
 
 	for rows.Next() {
-		var song deathguild.Song
+		var song dgcommon.Song
 		err = rows.Scan(
 			&song.ID,
 			&song.Artist,
@@ -271,7 +287,7 @@ func trimParenthesis(title string) string {
 	return trimParenthesisRE.ReplaceAllString(title, "$1")
 }
 
-func updateSong(txn *sql.Tx, song *deathguild.Song) error {
+func updateSong(txn *sql.Tx, song *dgcommon.Song) error {
 	// We want a NULL in this field with we didn't get an ID.
 	var spotifyID *string
 	if song.SpotifyID != "" {

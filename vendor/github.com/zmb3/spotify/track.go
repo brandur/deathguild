@@ -1,9 +1,8 @@
 package spotify
 
 import (
-	"encoding/json"
 	"errors"
-	"net/http"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -34,6 +33,10 @@ type SimpleTrack struct {
 	// DiscNumber.
 	TrackNumber int `json:"track_number"`
 	URI         URI `json:"uri"`
+}
+
+func (st SimpleTrack) String() string {
+	return fmt.Sprintf("TRACK<[%s] [%s]>", st.ID, st.Name)
 }
 
 // FullTrack provides extra track data in addition to what is provided by SimpleTrack.
@@ -78,34 +81,19 @@ func (t *SimpleTrack) TimeDuration() time.Duration {
 	return time.Duration(t.Duration) * time.Millisecond
 }
 
-// GetTrack is a wrapper around DefaultClient.GetTrack.
-func GetTrack(id ID) (*FullTrack, error) {
-	return DefaultClient.GetTrack(id)
-}
-
 // GetTrack gets Spotify catalog information for
 // a single track identified by its unique Spotify ID.
 func (c *Client) GetTrack(id ID) (*FullTrack, error) {
-	spotifyURL := baseAddress + "tracks/" + string(id)
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
-	var t FullTrack
-	err = json.NewDecoder(resp.Body).Decode(&t)
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
-}
+	spotifyURL := c.baseURL + "tracks/" + string(id)
 
-// GetTracks is a wrapper around DefaultClient.GetTracks.
-func GetTracks(ids ...ID) ([]*FullTrack, error) {
-	return DefaultClient.GetTracks(ids...)
+	var t FullTrack
+
+	err := c.get(spotifyURL, &t)
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
 }
 
 // GetTracks gets Spotify catalog information for multiple tracks based on their
@@ -117,22 +105,16 @@ func (c *Client) GetTracks(ids ...ID) ([]*FullTrack, error) {
 	if len(ids) > 50 {
 		return nil, errors.New("spotify: FindTracks supports up to 50 tracks")
 	}
-	spotifyURL := baseAddress + "tracks?ids=" + strings.Join(toStringSlice(ids), ",")
-	resp, err := c.http.Get(spotifyURL)
+	spotifyURL := c.baseURL + "tracks?ids=" + strings.Join(toStringSlice(ids), ",")
+
+	var t struct {
+		Tracks []*FullTrack `json:"tracks"`
+	}
+
+	err := c.get(spotifyURL, &t)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
 
-	var t struct {
-		Tracks []*FullTrack `jsosn:"tracks"`
-	}
-	err = json.NewDecoder(resp.Body).Decode(&t)
-	if err != nil {
-		return nil, errors.New("spotify:  couldn't decode tracks")
-	}
 	return t.Tracks, nil
 }

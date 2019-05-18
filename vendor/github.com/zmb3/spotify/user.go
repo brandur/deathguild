@@ -1,7 +1,6 @@
 package spotify
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -55,32 +54,23 @@ type PrivateUser struct {
 	Birthdate string `json:"birthdate"`
 }
 
-// GetUsersPublicProfile is a wrapper around DefaultClient.GetUsersPublicProfile.
-func GetUsersPublicProfile(userID ID) (*User, error) {
-	return DefaultClient.GetUsersPublicProfile(userID)
-}
-
 // GetUsersPublicProfile gets public profile information about a
 // Spotify User.  It does not require authentication.
 func (c *Client) GetUsersPublicProfile(userID ID) (*User, error) {
-	spotifyURL := baseAddress + "users/" + string(userID)
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+	spotifyURL := c.baseURL + "users/" + string(userID)
+
 	var user User
-	err = json.NewDecoder(resp.Body).Decode(&user)
+
+	err := c.get(spotifyURL, &user)
 	if err != nil {
 		return nil, err
 	}
+
 	return &user, nil
 }
 
 // CurrentUser gets detailed profile information about the
-// current user.  This call requires authorization.
+// current user.
 //
 // Reading the user's email address requires that the application
 // has the ScopeUserReadEmail scope.  Reading the country, display
@@ -92,19 +82,13 @@ func (c *Client) GetUsersPublicProfile(userID ID) (*User, error) {
 // This email address is unverified - do not assume that Spotify has
 // checked that the email address actually belongs to the user.
 func (c *Client) CurrentUser() (*PrivateUser, error) {
-	resp, err := c.http.Get(baseAddress + "me")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
 	var result PrivateUser
-	err = json.NewDecoder(resp.Body).Decode(&result)
+
+	err := c.get(c.baseURL+"me", &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return &result, nil
 }
 
@@ -117,7 +101,7 @@ func (c *Client) CurrentUsersTracks() (*SavedTrackPage, error) {
 // CurrentUsersTracksOpt is like CurrentUsersTracks, but it accepts additional
 // options for sorting and filtering the results.
 func (c *Client) CurrentUsersTracksOpt(opt *Options) (*SavedTrackPage, error) {
-	spotifyURL := baseAddress + "me/tracks"
+	spotifyURL := c.baseURL + "me/tracks"
 	if opt != nil {
 		v := url.Values{}
 		if opt.Country != nil {
@@ -133,25 +117,19 @@ func (c *Client) CurrentUsersTracksOpt(opt *Options) (*SavedTrackPage, error) {
 			spotifyURL += "?" + params
 		}
 	}
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+
 	var result SavedTrackPage
-	err = json.NewDecoder(resp.Body).Decode(&result)
+
+	err := c.get(spotifyURL, &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return &result, nil
 }
 
 // FollowUser adds the current user as a follower of one or more
 // spotify users, identified by their Spotify IDs.
-// This call requires authorization.
 //
 // Modifying the lists of artists or users the current user follows
 // requires that the application has the ScopeUserFollowModify scope.
@@ -161,7 +139,6 @@ func (c *Client) FollowUser(ids ...ID) error {
 
 // FollowArtist adds the current user as a follower of one or more
 // spotify artists, identified by their Spotify IDs.
-// This call requires authorization.
 //
 // Modifying the lists of artists or users the current user follows
 // requires that the application has the ScopeUserFollowModify scope.
@@ -170,7 +147,7 @@ func (c *Client) FollowArtist(ids ...ID) error {
 }
 
 // UnfollowUser removes the current user as a follower of one or more
-// Spotify users.  This call requires authorization.
+// Spotify users.
 //
 // Modifying the lists of artists or users the current user follows
 // requires that the application has the ScopeUserFollowModify scope.
@@ -179,7 +156,7 @@ func (c *Client) UnfollowUser(ids ...ID) error {
 }
 
 // UnfollowArtist removes the current user as a follower of one or more
-// Spotify artists.  This call requires authorization.
+// Spotify artists.
 //
 // Modifying the lists of artists or users the current user follows
 // requires that the application has the ScopeUserFollowModify scope.
@@ -189,8 +166,7 @@ func (c *Client) UnfollowArtist(ids ...ID) error {
 
 // CurrentUserFollows checks to see if the current user is following
 // one or more artists or other Spotify Users.  This call requires
-// authorization, and that the application has the ScopeUserFollowRead
-// scope.
+// ScopeUserFollowRead.
 //
 // The t argument indicates the type of the IDs, and must be either
 // "user" or "artist".
@@ -205,20 +181,15 @@ func (c *Client) CurrentUserFollows(t string, ids ...ID) ([]bool, error) {
 		return nil, errors.New("spotify: t must be 'artist' or 'user'")
 	}
 	spotifyURL := fmt.Sprintf("%sme/following/contains?type=%s&ids=%s",
-		baseAddress, t, strings.Join(toStringSlice(ids), ","))
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+		c.baseURL, t, strings.Join(toStringSlice(ids), ","))
+
 	var result []bool
-	err = json.NewDecoder(resp.Body).Decode(&result)
+
+	err := c.get(spotifyURL, &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -229,7 +200,7 @@ func (c *Client) modifyFollowers(usertype string, follow bool, ids ...ID) error 
 	v := url.Values{}
 	v.Add("type", usertype)
 	v.Add("ids", strings.Join(toStringSlice(ids), ","))
-	spotifyURL := baseAddress + "me/following?" + v.Encode()
+	spotifyURL := c.baseURL + "me/following?" + v.Encode()
 	method := "PUT"
 	if !follow {
 		method = "DELETE"
@@ -238,20 +209,15 @@ func (c *Client) modifyFollowers(usertype string, follow bool, ids ...ID) error 
 	if err != nil {
 		return err
 	}
-	resp, err := c.http.Do(req)
+	err = c.execute(req, nil, http.StatusNoContent)
 	if err != nil {
 		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		return decodeError(resp.Body)
 	}
 	return nil
 }
 
 // CurrentUsersFollowedArtists gets the current user's followed artists.
-// This call requires authorization, and that the user has granted the
-// ScopeUserFollowRead scope.
+// This call requires that the user has granted the ScopeUserFollowRead scope.
 func (c *Client) CurrentUsersFollowedArtists() (*FullArtistCursorPage, error) {
 	return c.CurrentUsersFollowedArtistsOpt(-1, "")
 }
@@ -263,8 +229,9 @@ func (c *Client) CurrentUsersFollowedArtists() (*FullArtistCursorPage, error) {
 // wish to specify either of the parameters, use -1 for limit and the empty
 // string for after.
 func (c *Client) CurrentUsersFollowedArtistsOpt(limit int, after string) (*FullArtistCursorPage, error) {
-	spotifyURL := baseAddress + "me/following?type=artist"
+	spotifyURL := c.baseURL + "me/following"
 	v := url.Values{}
+	v.Set("type", "artist")
 	if limit != -1 {
 		v.Set("limit", strconv.Itoa(limit))
 	}
@@ -274,21 +241,16 @@ func (c *Client) CurrentUsersFollowedArtistsOpt(limit int, after string) (*FullA
 	if params := v.Encode(); params != "" {
 		spotifyURL += "?" + params
 	}
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+
 	var result struct {
 		A FullArtistCursorPage `json:"artists"`
 	}
-	err = json.NewDecoder(resp.Body).Decode(&result)
+
+	err := c.get(spotifyURL, &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return &result.A, nil
 }
 
@@ -301,7 +263,7 @@ func (c *Client) CurrentUsersAlbums() (*SavedAlbumPage, error) {
 // CurrentUsersAlbumsOpt is like CurrentUsersAlbums, but it accepts additional
 // options for sorting and filtering the results.
 func (c *Client) CurrentUsersAlbumsOpt(opt *Options) (*SavedAlbumPage, error) {
-	spotifyURL := baseAddress + "me/albums"
+	spotifyURL := c.baseURL + "me/albums"
 	if opt != nil {
 		v := url.Values{}
 		if opt.Country != nil {
@@ -317,24 +279,20 @@ func (c *Client) CurrentUsersAlbumsOpt(opt *Options) (*SavedAlbumPage, error) {
 			spotifyURL += "?" + params
 		}
 	}
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+
 	var result SavedAlbumPage
-	err = json.NewDecoder(resp.Body).Decode(&result)
+
+	err := c.get(spotifyURL, &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return &result, nil
 }
 
 // CurrentUsersPlaylists gets a list of the playlists owned or followed by
-// the current spotify user.  This call requires authorization.
+// the current spotify user.
+//
 // Private playlists require the ScopePlaylistReadPrivate scope.  Note that
 // this scope alone will not return collaborative playlists, even though
 // they are always private.  In order to retrieve collaborative playlists
@@ -346,7 +304,7 @@ func (c *Client) CurrentUsersPlaylists() (*SimplePlaylistPage, error) {
 // CurrentUsersPlaylistsOpt is like CurrentUsersPlaylists, but it accepts
 // additional options for sorting and filtering the results.
 func (c *Client) CurrentUsersPlaylistsOpt(opt *Options) (*SimplePlaylistPage, error) {
-	spotifyURL := baseAddress + "me/playlists"
+	spotifyURL := c.baseURL + "me/playlists"
 	if opt != nil {
 		v := url.Values{}
 		if opt.Limit != nil {
@@ -359,18 +317,86 @@ func (c *Client) CurrentUsersPlaylistsOpt(opt *Options) (*SimplePlaylistPage, er
 			spotifyURL += "?" + params
 		}
 	}
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+
 	var result SimplePlaylistPage
-	err = json.NewDecoder(resp.Body).Decode(&result)
+
+	err := c.get(spotifyURL, &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return &result, nil
+}
+
+// CurrentUsersTopArtistsOpt gets a list of the top played artists in a given time
+// range of the current Spotify user. It supports up to 50 artists in a single
+// call. This call requires ScopeUserTopRead.
+func (c *Client) CurrentUsersTopArtistsOpt(opt *Options) (*FullArtistPage, error) {
+	spotifyURL := c.baseURL + "me/top/artists"
+	if opt != nil {
+		v := url.Values{}
+		if opt.Limit != nil {
+			v.Set("limit", strconv.Itoa(*opt.Limit))
+		}
+		if opt.Timerange != nil {
+			v.Set("time_range", *opt.Timerange+"_term")
+		}
+		if params := v.Encode(); params != "" {
+			spotifyURL += "?" + params
+		}
+	}
+
+	var result FullArtistPage
+
+	err := c.get(spotifyURL, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// CurrentUsersTopArtists is like CurrentUsersTopArtistsOpt but with
+// sensible defaults. The default limit is 20 and the default timerange
+// is medium_term.
+func (c *Client) CurrentUsersTopArtists() (*FullArtistPage, error) {
+	return c.CurrentUsersTopArtistsOpt(nil)
+}
+
+// CurrentUsersTopTracksOpt gets a list of the top played tracks in a given time
+// range of the current Spotify user. It supports up to 50 tracks in a single
+// call. This call requires ScopeUserTopRead.
+func (c *Client) CurrentUsersTopTracksOpt(opt *Options) (*FullTrackPage, error) {
+	spotifyURL := c.baseURL + "me/top/tracks"
+	if opt != nil {
+		v := url.Values{}
+		if opt.Limit != nil {
+			v.Set("limit", strconv.Itoa(*opt.Limit))
+		}
+		if opt.Timerange != nil {
+			v.Set("time_range", *opt.Timerange+"_term")
+		}
+		if opt.Offset != nil {
+			v.Set("offset", strconv.Itoa(*opt.Offset))
+		}
+		if params := v.Encode(); params != "" {
+			spotifyURL += "?" + params
+		}
+	}
+
+	var result FullTrackPage
+
+	err := c.get(spotifyURL, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// CurrentUsersTopTracks is like CurrentUsersTopTracksOpt but with
+// sensible defaults. The default limit is 20 and the default timerange
+// is medium_term.
+func (c *Client) CurrentUsersTopTracks() (*FullTrackPage, error) {
+	return c.CurrentUsersTopTracksOpt(nil)
 }

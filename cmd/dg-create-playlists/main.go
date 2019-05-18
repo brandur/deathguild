@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/deathguild"
-	"github.com/brandur/sorg/pool"
+	"github.com/brandur/deathguild/modules/dgcommon"
+	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 	"github.com/zmb3/spotify"
@@ -15,6 +14,10 @@ import (
 
 // Format for the names of Death Guild playlists.
 const playlistNameFormat = "Death Guild — %v"
+const playlistDescriptionFormat = `A playlist played at the Death Guild event of %v. See: https://deathguild.brandur.org/playlists/%v.`
+
+// Concurrency level to run job pool at.
+const poolConcurrency = 30
 
 // Conf contains configuration information for the command. It's extracted
 // from environment variables.
@@ -40,23 +43,24 @@ type Conf struct {
 var client *spotify.Client
 var conf Conf
 var db *sql.DB
+var log modulir.LoggerInterface = &modulir.Logger{Level: modulir.LevelInfo}
 var playlistMap map[string]spotify.ID
 var userID string
 
 func main() {
 	err := envdecode.Decode(&conf)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	db, err = sql.Open("postgres", conf.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	txn, err := db.Begin()
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	// Do one initial fetch out of the loop below just so that we can die very
@@ -64,37 +68,42 @@ func main() {
 	// build) if we don't need to do any work.
 	playlists, err := playlistsNeedingID(txn, 1)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	err = txn.Rollback()
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
+
+	var pool *modulir.Pool
 
 	if len(playlists) == 0 {
 		goto done
 	}
 
-	client = deathguild.GetSpotifyClient(
+	pool = modulir.NewPool(log, poolConcurrency)
+	defer pool.Stop()
+
+	client = dgcommon.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	// A user is needed for some API operations, so just cache one for the
 	// whole set of requests.
 	userID, err = getCurrentUserID()
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	playlistMap, err = getPlaylistMap()
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	for {
-		done, exitCode, err := runLoop()
+		done, exitCode, err := runLoop(pool)
 		if err != nil {
-			log.Fatal(err)
+			dgcommon.ExitWithError(err)
 		}
 		if done {
 			defer os.Exit(exitCode)
@@ -104,8 +113,8 @@ func main() {
 done:
 }
 
-func createPlaylist(name string) (spotify.ID, error) {
-	playlist, err := client.CreatePlaylistForUser(userID, name, true)
+func createPlaylist(name, description string) (spotify.ID, error) {
+	playlist, err := client.CreatePlaylistForUser(userID, name, description, true)
 	if err != nil {
 		return spotify.ID(""), err
 	}
@@ -115,14 +124,16 @@ func createPlaylist(name string) (spotify.ID, error) {
 }
 
 func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
-	playlist *deathguild.Playlist) error {
+	playlist *dgcommon.Playlist) error {
 
 	name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
+	description := fmt.Sprintf(playlistDescriptionFormat,
+		playlist.FormattedDay(), playlist.FormattedDay())
 
 	playlistID, ok := playlistMap[name]
 	if !ok {
 		var err error
-		playlistID, err = createPlaylist(name)
+		playlistID, err = createPlaylist(name, description)
 		if err != nil {
 			return err
 		}
@@ -147,7 +158,7 @@ func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 		songIDs = songIDs[0:100]
 	}
 
-	err := client.ReplacePlaylistTracks(userID, playlistID, songIDs...)
+	err := client.ReplacePlaylistTracks(playlistID, songIDs...)
 	if err != nil {
 		return err
 	}
@@ -212,7 +223,7 @@ func getPlaylistMap() (map[string]spotify.ID, error) {
 	return playlistMap, nil
 }
 
-func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) {
+func playlistsNeedingID(txn *sql.Tx, limit int) ([]*dgcommon.Playlist, error) {
 	rows, err := txn.Query(`
 		SELECT id, day
 		FROM playlists
@@ -227,10 +238,10 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) 
 	}
 	defer rows.Close()
 
-	var playlists []*deathguild.Playlist
+	var playlists []*dgcommon.Playlist
 
 	for rows.Next() {
-		var playlist deathguild.Playlist
+		var playlist dgcommon.Playlist
 		err = rows.Scan(
 			&playlist.ID,
 			&playlist.Day,
@@ -252,7 +263,7 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*deathguild.Playlist, error) 
 	return playlists, nil
 }
 
-func runLoop() (bool, int, error) {
+func runLoop(pool *modulir.Pool) (bool, int, error) {
 	txn, err := db.Begin()
 	if err != nil {
 		return false, 0, err
@@ -275,24 +286,32 @@ func runLoop() (bool, int, error) {
 		return true, 0, nil
 	}
 
-	var tasks []*pool.Task
+	log.Infof("Starting work round")
+	pool.StartRound()
 
-	for _, playlist := range playlists {
-		p := playlist
-		tasks = append(tasks, pool.NewTask(func() error {
-			return createPlaylistWithSongs(txn, playlistMap, p)
-		}))
+	for _, p := range playlists {
+		playlist := p
+
+		name := fmt.Sprintf("playlist: %v", playlist.FormattedDay())
+		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
+			return true, createPlaylistWithSongs(txn, playlistMap, p)
+		})
 	}
 
-	if !deathguild.RunTasks(conf.Concurrency, tasks) {
-		return true, 1, nil
+	pool.Wait()
+	pool.LogErrors()
+	pool.LogSlowest()
+
+	if pool.JobsErrored != nil {
+		return true, 0, fmt.Errorf("%v job(s) errored occurred during last round",
+			len(pool.JobsErrored))
 	}
 
 	log.Infof("Created %v Spotify playlist(s)", len(playlists))
 	return false, 0, nil
 }
 
-func updatePlaylist(txn *sql.Tx, playlist *deathguild.Playlist) error {
+func updatePlaylist(txn *sql.Tx, playlist *dgcommon.Playlist) error {
 	// We want a NULL in this field with we didn't get an ID.
 	var spotifyID *string
 	if playlist.SpotifyID != "" {

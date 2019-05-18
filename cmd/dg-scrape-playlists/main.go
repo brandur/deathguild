@@ -7,15 +7,13 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/deathguild"
-	"github.com/brandur/sorg/pool"
+	"github.com/brandur/deathguild/modules/dgcommon"
+	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 )
@@ -29,6 +27,9 @@ const (
 
 	// The location of the playlist index.
 	indexURL = baseURL + "/playdates"
+
+	// Concurrency level to run job pool at.
+	poolConcurrency = 20
 )
 
 // Conf contains configuration information for the command. It's extracted from
@@ -48,43 +49,53 @@ type PlaylistLink string
 
 var conf Conf
 var db *sql.DB
+var log modulir.LoggerInterface = &modulir.Logger{Level: modulir.LevelInfo}
 
 func main() {
-	log.SetLevel(log.DebugLevel)
-
 	err := envdecode.Decode(&conf)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	db, err = sql.Open("postgres", conf.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	log.Infof("Requesting index at: %v", indexURL)
 	resp, err := http.Get(indexURL)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 	defer resp.Body.Close()
 
 	links, err := scrapeIndex(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
-	var tasks []*pool.Task
+	pool := modulir.NewPool(log, poolConcurrency)
+	defer pool.Stop()
 
-	for _, link := range links {
-		l := link
-		tasks = append(tasks, pool.NewTask(func() error {
-			return handlePlaylist(l)
-		}))
+	log.Infof("Starting work round")
+	pool.StartRound()
+
+	for _, l := range links {
+		link := l
+
+		name := fmt.Sprintf("playlist: %v", link)
+		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
+			return handlePlaylist(link)
+		})
 	}
 
-	if !deathguild.RunTasks(conf.Concurrency, tasks) {
-		defer os.Exit(1)
+	pool.Wait()
+	pool.LogErrors()
+	pool.LogSlowest()
+
+	if pool.JobsErrored != nil {
+		dgcommon.ExitWithError(fmt.Errorf("%v job(s) errored occurred during last loop",
+			len(pool.JobsErrored)))
 	}
 }
 
@@ -121,13 +132,14 @@ func extractDay(link PlaylistLink) string {
 	return parts[len(parts)-1]
 }
 
-func handlePlaylist(link PlaylistLink) (retErr error) {
+func handlePlaylist(link PlaylistLink) (bool, error) {
+	var retErr error
 	day := extractDay(link)
 
 	txn, err := db.Begin()
 	if err != nil {
 		retErr = err
-		return
+		return false, retErr
 	}
 	defer func() {
 		// Don't try to commit with an error because we'll end up overriding
@@ -151,9 +163,9 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 	).Scan(&playlistID)
 
 	if playlistID != 0 {
-		log.Debugf("Playlist %v already handled; skipping", day)
+		log.Infof("Playlist %v already handled; skipping", day)
 		retErr = nil
-		return
+		return true, retErr
 	}
 
 	playlistURL := string(baseURL + link)
@@ -161,20 +173,20 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 	resp, err := http.Get(playlistURL)
 	if err != nil {
 		retErr = err
-		return
+		return true, retErr
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		retErr = fmt.Errorf("bad response when requesting: %s (status code = %v)",
 			playlistURL, resp.StatusCode)
-		return
+		return true, retErr
 	}
 
 	songs, err := scrapePlaylist(resp.Body)
 	if err != nil {
 		retErr = err
-		return
+		return true, retErr
 	}
 
 	// If we got a playlist of zero songs, that probably means our DOM/HTML
@@ -184,13 +196,13 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 		retErr = fmt.Errorf(
 			"found zero-length playlist; this probably means that scraping logic is broken",
 		)
-		return
+		return true, retErr
 	}
 
 	err = upsertPlaylistAndSongs(txn, day, songs)
 	if err != nil {
 		retErr = err
-		return
+		return true, retErr
 	}
 
 	// be kind and rate limit our requests
@@ -199,11 +211,11 @@ func handlePlaylist(link PlaylistLink) (retErr error) {
 	time.Sleep(time.Duration(t) * time.Second)
 
 	retErr = nil
-	return
+	return true, nil
 }
 
 func upsertPlaylistAndSongs(txn *sql.Tx, day string,
-	songs []*deathguild.Song) error {
+	songs []*dgcommon.Song) error {
 
 	var playlistID int
 	err := txn.QueryRow(`
@@ -252,14 +264,14 @@ func upsertPlaylistAndSongs(txn *sql.Tx, day string,
 	return nil
 }
 
-func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
+func scrapePlaylist(r io.Reader) ([]*dgcommon.Song, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, err
 	}
 
 	var outErr error
-	var songs []*deathguild.Song
+	var songs []*dgcommon.Song
 
 	// Old style playlists
 	doc.Find("table.Normal tr").EachWithBreak(func(i int, s *goquery.Selection) bool {
@@ -271,7 +283,7 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 			return true
 		}
 
-		songs = append(songs, &deathguild.Song{Artist: artist, Title: title})
+		songs = append(songs, &dgcommon.Song{Artist: artist, Title: title})
 		return true
 	})
 	if outErr != nil {
@@ -310,7 +322,7 @@ func scrapePlaylist(r io.Reader) ([]*deathguild.Song, error) {
 		// First index is the entire match, the second is our capture group.
 		title := html.UnescapeString(matches[1])
 
-		songs = append(songs, &deathguild.Song{Artist: artist, Title: title})
+		songs = append(songs, &dgcommon.Song{Artist: artist, Title: title})
 		return true
 	})
 	if outErr != nil {

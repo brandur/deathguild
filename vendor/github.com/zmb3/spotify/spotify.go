@@ -3,13 +3,20 @@
 package spotify
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
+
+// Version is the version of this library.
+const Version = "1.0.0"
 
 const (
 	// DateLayout can be used with time.Parse to create time.Time values
@@ -21,18 +28,26 @@ const (
 	// with a zero offset.  For example, PlaylistTrack's AddedAt field uses
 	// this format.
 	TimestampLayout = "2006-01-02T15:04:05Z"
+
+	// defaultRetryDurationS helps us fix an apparent server bug whereby we will
+	// be told to retry but not be given a wait-interval.
+	defaultRetryDuration = time.Second * 5
+
+	// rateLimitExceededStatusCode is the code that the server returns when our
+	// request frequency is too high.
+	rateLimitExceededStatusCode = 429
 )
 
-var (
-	baseAddress = "https://api.spotify.com/v1/"
+const baseAddress = "https://api.spotify.com/v1/"
 
-	// DefaultClient is the default client that is used by the wrapper functions
-	// that don't require authorization.  If you need to authenticate, create
-	// your own client with `Authenticator.NewClient`.
-	DefaultClient = &Client{
-		http: new(http.Client),
-	}
-)
+// Client is a client for working with the Spotify Web API.
+// To create an authenticated client, use the `Authenticator.NewClient` method.
+type Client struct {
+	http    *http.Client
+	baseURL string
+
+	AutoRetry bool
+}
 
 // URI identifies an artist, album, track, or category.  For example,
 // spotify:track:6rqhFgbbKwnb9MLmUQDhG6
@@ -94,23 +109,127 @@ func (e Error) Error() string {
 }
 
 // decodeError decodes an Error from an io.Reader.
-func decodeError(r io.Reader) error {
+func (c *Client) decodeError(resp *http.Response) error {
+	responseBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if len(responseBody) == 0 {
+		return fmt.Errorf("spotify: HTTP %d: %s (body empty)", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	buf := bytes.NewBuffer(responseBody)
+
 	var e struct {
 		E Error `json:"error"`
 	}
-	err := json.NewDecoder(r).Decode(&e)
+	err = json.NewDecoder(buf).Decode(&e)
 	if err != nil {
-		return errors.New("spotify: couldn't decode error")
+		return fmt.Errorf("spotify: couldn't decode error: (%d) [%s]", len(responseBody), responseBody)
 	}
+
+	if e.E.Message == "" {
+		// Some errors will result in there being a useful status-code but an
+		// empty message, which will confuse the user (who only has access to
+		// the message and not the code). An example of this is when we send
+		// some of the arguments directly in the HTTP query and the URL ends-up
+		// being too long.
+
+		e.E.Message = fmt.Sprintf("spotify: unexpected HTTP %d: %s (empty error)",
+			resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
 	return e.E
 }
 
-// Client is a client for working with the Spotify Web API.
-// To create an authenticated client, use the
-// `Authenticator.NewClient` method.  If you don't need to
-// authenticate, you can use `DefaultClient`.
-type Client struct {
-	http *http.Client
+// shouldRetry determines whether the status code indicates that the
+// previous operation should be retried at a later time
+func shouldRetry(status int) bool {
+	return status == http.StatusAccepted || status == http.StatusTooManyRequests
+}
+
+// isFailure determines whether the code indicates failure
+func isFailure(code int, validCodes []int) bool {
+	for _, item := range validCodes {
+		if item == code {
+			return false
+		}
+	}
+	return true
+}
+
+// execute executes a non-GET request. `needsStatus` describes other HTTP status codes
+// that can represent success. Note that in all current usages of this function,
+// we need to still allow a 200 even if we'd also like to check for additional
+// success codes.
+func (c *Client) execute(req *http.Request, result interface{}, needsStatus ...int) error {
+	for {
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if c.AutoRetry && shouldRetry(resp.StatusCode) {
+			time.Sleep(retryDuration(resp))
+			continue
+		}
+		if resp.StatusCode != http.StatusOK && isFailure(resp.StatusCode, needsStatus) {
+			return c.decodeError(resp)
+		}
+
+		if result != nil {
+			if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+				return err
+			}
+		}
+		break
+	}
+	return nil
+}
+
+func retryDuration(resp *http.Response) time.Duration {
+	raw := resp.Header.Get("Retry-After")
+	if raw == "" {
+		return defaultRetryDuration
+	}
+	seconds, err := strconv.ParseInt(raw, 10, 32)
+	if err != nil {
+		return defaultRetryDuration
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+func (c *Client) get(url string, result interface{}) error {
+	for {
+		resp, err := c.http.Get(url)
+		if err != nil {
+			return err
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode == rateLimitExceededStatusCode && c.AutoRetry {
+			time.Sleep(retryDuration(resp))
+			continue
+		}
+		if resp.StatusCode == http.StatusNoContent {
+			return nil
+		}
+		if resp.StatusCode != http.StatusOK {
+			return c.decodeError(resp)
+		}
+
+		err = json.NewDecoder(resp.Body).Decode(result)
+		if err != nil {
+			return err
+		}
+
+		break
+	}
+
+	return nil
 }
 
 // Options contains optional parameters that can be provided
@@ -127,12 +246,16 @@ type Options struct {
 	// Offset is the index of the first item to return.  Use it
 	// with Limit to get the next set of items.
 	Offset *int
+	// Timerange is the period of time from which to return results
+	// in certain API calls. The three options are the following string
+	// literals: "short", "medium", and "long"
+	Timerange *string
 }
 
 // NewReleasesOpt is like NewReleases, but it accepts optional parameters
 // for filtering the results.
 func (c *Client) NewReleasesOpt(opt *Options) (albums *SimpleAlbumPage, err error) {
-	spotifyURL := baseAddress + "browse/new-releases"
+	spotifyURL := c.baseURL + "browse/new-releases"
 	if opt != nil {
 		v := url.Values{}
 		if opt.Country != nil {
@@ -148,19 +271,19 @@ func (c *Client) NewReleasesOpt(opt *Options) (albums *SimpleAlbumPage, err erro
 			spotifyURL += "?" + params
 		}
 	}
-	resp, err := c.http.Get(spotifyURL)
+
+	var objmap map[string]*json.RawMessage
+	err = c.get(spotifyURL, &objmap)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+
 	var result SimpleAlbumPage
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	err = json.Unmarshal(*objmap["albums"], &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return &result, nil
 }
 

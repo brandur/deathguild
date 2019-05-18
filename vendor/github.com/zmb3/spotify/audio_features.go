@@ -1,9 +1,7 @@
 package spotify
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 )
 
@@ -109,23 +107,17 @@ const (
 // high-level acoustic attributes of audio tracks.
 // Objects are returned in the order requested.  If an object
 // is not found, a nil value is returned in the appropriate position.
-// This call requires authorization.
 func (c *Client) GetAudioFeatures(ids ...ID) ([]*AudioFeatures, error) {
-	url := fmt.Sprintf("%saudio-features?ids=%s", baseAddress, strings.Join(toStringSlice(ids), ","))
-	resp, err := c.http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+	url := fmt.Sprintf("%saudio-features?ids=%s", c.baseURL, strings.Join(toStringSlice(ids), ","))
+
 	temp := struct {
 		F []*AudioFeatures `json:"audio_features"`
 	}{}
-	err = json.NewDecoder(resp.Body).Decode(&temp)
+
+	err := c.get(url, &temp)
 	if err != nil {
 		return nil, err
 	}
+
 	return temp.F, nil
 }

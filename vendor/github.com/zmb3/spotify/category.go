@@ -1,9 +1,7 @@
 package spotify
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 )
@@ -33,7 +31,7 @@ type Category struct {
 // This call requries authorization.
 func (c *Client) GetCategoryOpt(id, country, locale string) (Category, error) {
 	cat := Category{}
-	spotifyURL := fmt.Sprintf("%sbrowse/categories/%s", baseAddress, id)
+	spotifyURL := fmt.Sprintf("%sbrowse/categories/%s", c.baseURL, id)
 	values := url.Values{}
 	if country != "" {
 		values.Set("country", country)
@@ -44,35 +42,30 @@ func (c *Client) GetCategoryOpt(id, country, locale string) (Category, error) {
 	if query := values.Encode(); query != "" {
 		spotifyURL += "?" + query
 	}
-	resp, err := c.http.Get(spotifyURL)
+
+	err := c.get(spotifyURL, &cat)
 	if err != nil {
 		return cat, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return cat, decodeError(resp.Body)
-	}
-	err = json.NewDecoder(resp.Body).Decode(&cat)
+
 	return cat, err
 }
 
 // GetCategory gets a single category used to tag items in Spotify
 // (on, for example, the Spotify player's Browse tab).
-// This call requires authorization.
 func (c *Client) GetCategory(id string) (Category, error) {
 	return c.GetCategoryOpt(id, "", "")
 }
 
 // GetCategoryPlaylists gets a list of Spotify playlists tagged with a paricular category.
-// This call requires authorization.
 func (c *Client) GetCategoryPlaylists(catID string) (*SimplePlaylistPage, error) {
 	return c.GetCategoryPlaylistsOpt(catID, nil)
 }
 
 // GetCategoryPlaylistsOpt is like GetCategoryPlaylists, but it accepts optional
-// arguments.  This call requires authorization.
+// arguments.
 func (c *Client) GetCategoryPlaylistsOpt(catID string, opt *Options) (*SimplePlaylistPage, error) {
-	spotifyURL := fmt.Sprintf("%sbrowse/categories/%s/playlists", baseAddress, catID)
+	spotifyURL := fmt.Sprintf("%sbrowse/categories/%s/playlists", c.baseURL, catID)
 	if opt != nil {
 		values := url.Values{}
 		if opt.Country != nil {
@@ -88,40 +81,33 @@ func (c *Client) GetCategoryPlaylistsOpt(catID string, opt *Options) (*SimplePla
 			spotifyURL += "?" + query
 		}
 	}
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+
 	wrapper := struct {
 		Playlists SimplePlaylistPage `json:"playlists"`
 	}{}
-	err = json.NewDecoder(resp.Body).Decode(&wrapper)
+
+	err := c.get(spotifyURL, &wrapper)
 	if err != nil {
 		return nil, err
 	}
+
 	return &wrapper.Playlists, nil
 }
 
 // GetCategories gets a list of categories used to tag items in Spotify
 // (on, for example, the Spotify player's "Browse" tab).
-// This call requires authorization.
 func (c *Client) GetCategories() (*CategoryPage, error) {
 	return c.GetCategoriesOpt(nil, "")
 }
 
 // GetCategoriesOpt is like GetCategories, but it accepts optional parameters.
-// This call requires authorization.
 //
 // The locale option can be used to get the results in a particular language.
 // It consists of an ISO 639 language code and an ISO 3166-1 alpha-2 country
 // code, separated by an underscore.  Specify the empty string to have results
 // returned in the Spotify default language (American English).
 func (c *Client) GetCategoriesOpt(opt *Options, locale string) (*CategoryPage, error) {
-	spotifyURL := baseAddress + "browse/categories"
+	spotifyURL := c.baseURL + "browse/categories"
 	values := url.Values{}
 	if locale != "" {
 		values.Set("locale", locale)
@@ -140,20 +126,15 @@ func (c *Client) GetCategoriesOpt(opt *Options, locale string) (*CategoryPage, e
 	if query := values.Encode(); query != "" {
 		spotifyURL += "?" + query
 	}
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+
 	wrapper := struct {
 		Categories CategoryPage `json:"categories"`
 	}{}
-	err = json.NewDecoder(resp.Body).Decode(&wrapper)
+
+	err := c.get(spotifyURL, &wrapper)
 	if err != nil {
 		return nil, err
 	}
+
 	return &wrapper.Categories, nil
 }

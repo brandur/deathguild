@@ -13,6 +13,11 @@ html lang='en'
     / for now so that clients need to pick up fewer assets.
     / script src="/assets/{{.Release}}/app.js" type="text/javascript"
 
+    {{if eq .DGEnv "development"}}
+      / Served by Modulir itself (but only if websockets are enabled).
+      script src="/websocket.js" type="text/javascript"
+    {{end}}
+
     = include views/_cormorant_garamond .
 
   body

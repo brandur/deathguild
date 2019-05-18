@@ -1,10 +1,8 @@
 package spotify
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -15,6 +13,14 @@ import (
 type SimpleAlbum struct {
 	// The name of the album.
 	Name string `json:"name"`
+	// A slice of SimpleArtists
+	Artists []SimpleArtist `json:"artists"`
+	// The field is present when getting an artist’s
+	// albums. Possible values are “album”, “single”,
+	// “compilation”, “appears_on”. Compare to album_type
+	// this field represents relationship between the artist
+	// and the album.
+	AlbumGroup string `json:"album_group"`
 	// The type of the album: one of "album",
 	// "single", or "compilation".
 	AlbumType string `json:"album_type"`
@@ -36,6 +42,13 @@ type SimpleAlbum struct {
 	Images []Image `json:"images"`
 	// Known external URLs for this album.
 	ExternalURLs map[string]string `json:"external_urls"`
+	// The date the album was first released.  For example, "1981-12-15".
+	// Depending on the ReleaseDatePrecision, it might be shown as
+	// "1981" or "1981-12". You can use ReleaseDateTime to convert this
+	// to a time.Time value.
+	ReleaseDate string `json:"release_date"`
+	// The precision with which ReleaseDate value is known: "year", "month", or "day"
+	ReleaseDatePrecision string `json:"release_date_precision"`
 }
 
 // Copyright contains the copyright statement associated with an album.
@@ -87,7 +100,7 @@ func (f *FullAlbum) ReleaseDateTime() time.Time {
 		return result
 	}
 	if f.ReleaseDatePrecision == "month" {
-		ym := strings.Split("-", f.ReleaseDate)
+		ym := strings.Split(f.ReleaseDate, "-")
 		year, _ := strconv.Atoi(ym[0])
 		month, _ := strconv.Atoi(ym[1])
 		return time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
@@ -98,20 +111,15 @@ func (f *FullAlbum) ReleaseDateTime() time.Time {
 
 // GetAlbum gets Spotify catalog information for a single album, given its Spotify ID.
 func (c *Client) GetAlbum(id ID) (*FullAlbum, error) {
-	spotifyURL := fmt.Sprintf("%salbums/%s", baseAddress, id)
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+	spotifyURL := fmt.Sprintf("%salbums/%s", c.baseURL, id)
+
 	var a FullAlbum
-	err = json.NewDecoder(resp.Body).Decode(&a)
+
+	err := c.get(spotifyURL, &a)
 	if err != nil {
 		return nil, err
 	}
+
 	return &a, nil
 }
 
@@ -123,11 +131,6 @@ func toStringSlice(ids []ID) []string {
 	return result
 }
 
-// GetAlbums is a wrapper around DefaultClient.GetAlbums.
-func GetAlbums(ids ...ID) ([]*FullAlbum, error) {
-	return DefaultClient.GetAlbums(ids...)
-}
-
 // GetAlbums gets Spotify Catalog information for multiple albums, given their
 // Spotify IDs.  It supports up to 20 IDs in a single call.  Albums are returned
 // in the order requested.  If an album is not found, that position in the
@@ -136,22 +139,17 @@ func (c *Client) GetAlbums(ids ...ID) ([]*FullAlbum, error) {
 	if len(ids) > 20 {
 		return nil, errors.New("spotify: exceeded maximum number of albums")
 	}
-	spotifyURL := fmt.Sprintf("%salbums?ids=%s", baseAddress, strings.Join(toStringSlice(ids), ","))
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeError(resp.Body)
-	}
+	spotifyURL := fmt.Sprintf("%salbums?ids=%s", c.baseURL, strings.Join(toStringSlice(ids), ","))
+
 	var a struct {
 		Albums []*FullAlbum `json:"albums"`
 	}
-	err = json.NewDecoder(resp.Body).Decode(&a)
+
+	err := c.get(spotifyURL, &a)
 	if err != nil {
 		return nil, err
 	}
+
 	return a.Albums, nil
 }
 
@@ -186,21 +184,11 @@ func (at AlbumType) encode() string {
 	return strings.Join(types, ",")
 }
 
-// GetAlbumTracks is a wrapper around DefaultClient.GetAlbumTracks.
-func GetAlbumTracks(id ID) (*SimpleTrackPage, error) {
-	return DefaultClient.GetAlbumTracks(id)
-}
-
 // GetAlbumTracks gets the tracks for a particular album.
 // If you only care about the tracks, this call is more efficient
 // than GetAlbum.
 func (c *Client) GetAlbumTracks(id ID) (*SimpleTrackPage, error) {
 	return c.GetAlbumTracksOpt(id, -1, -1)
-}
-
-// GetAlbumTracksOpt is a wrapper around DefaultClient.GetAlbumTracksOpt.
-func GetAlbumTracksOpt(id ID, limit, offset int) (*SimpleTrackPage, error) {
-	return DefaultClient.GetAlbumTracksOpt(id, limit, offset)
 }
 
 // GetAlbumTracksOpt behaves like GetAlbumTracks, with the exception that it
@@ -209,7 +197,7 @@ func GetAlbumTracksOpt(id ID, limit, offset int) (*SimpleTrackPage, error) {
 // The offset argument can be used to specify the index of the first track to return.
 // It can be used along with limit to reqeust the next set of results.
 func (c *Client) GetAlbumTracksOpt(id ID, limit, offset int) (*SimpleTrackPage, error) {
-	spotifyURL := fmt.Sprintf("%salbums/%s/tracks", baseAddress, id)
+	spotifyURL := fmt.Sprintf("%salbums/%s/tracks", c.baseURL, id)
 	v := url.Values{}
 	if limit != -1 {
 		v.Set("limit", strconv.Itoa(limit))
@@ -221,16 +209,12 @@ func (c *Client) GetAlbumTracksOpt(id ID, limit, offset int) (*SimpleTrackPage, 
 	if optional != "" {
 		spotifyURL = spotifyURL + "?" + optional
 	}
-	resp, err := c.http.Get(spotifyURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 
 	var result SimpleTrackPage
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	err := c.get(spotifyURL, &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return &result, nil
 }

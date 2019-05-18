@@ -1,2 +1,5 @@
 .env
-public
+.envrc
+/deathguild
+/dg-*
+/public

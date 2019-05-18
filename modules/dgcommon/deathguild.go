@@ -2,12 +2,9 @@ package dgcommon
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
-	"path"
 	"time"
-
-	log "github.com/Sirupsen/logrus"
-	"github.com/brandur/sorg/pool"
 )
 
 const (
@@ -108,49 +105,8 @@ type Song struct {
 	SpotifyID string
 }
 
-var outputDirs = []string{
-	".",
-	"assets",
-	"assets/" + Release,
-	"playlists",
-}
-
-// CreateOutputDirs creates a target directory for the static site and all
-// other necessary directories for the build if they don't already exist.
-func CreateOutputDirs(targetDir string) error {
-	for _, dir := range outputDirs {
-		dir = path.Join(targetDir, dir)
-		err := os.MkdirAll(dir, 0755)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// RunTasks runs the given tasks in a pool.
-//
-// After the run, if any errors occurred, it prints the first 10. Returns true
-// if all tasks succeeded. If a false is returned, the caller should consider
-// exiting with non-zero status.
-func RunTasks(concurrency int, tasks []*pool.Task) bool {
-	log.Infof("Running %v task(s) with concurrency %v",
-		len(tasks), concurrency)
-
-	p := pool.NewPool(tasks, concurrency)
-	p.Run()
-
-	var numErrors int
-	for _, task := range p.Tasks {
-		if task.Err != nil {
-			log.Errorf("Error: %v", task.Err.Error())
-			numErrors++
-		}
-		if numErrors >= 10 {
-			log.Errorf("Too many errors.")
-			break
-		}
-	}
-	return !p.HasErrors()
+// ExitWithError prints the given error to stderr and exits with a status of 1.
+func ExitWithError(err error) {
+	fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	os.Exit(1)
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/brandur/modulir"
 	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/joeshaw/envdecode"
 	assert "github.com/stretchr/testify/require"
@@ -84,6 +85,12 @@ func InsertSong(t *testing.T, txn *sql.Tx, song *dgcommon.Song) {
 		spotifyID,
 	).Scan(&song.ID)
 	assert.NoError(t, err)
+}
+
+// NewContext is a convenience helper to create a new modulir.Context suitable
+// for use in the test suite.
+func NewContext() *modulir.Context {
+	return modulir.NewContext(&modulir.Args{Log: &modulir.Logger{Level: modulir.LevelInfo}})
 }
 
 // truncateTestDB truncates all tables in the testing database.

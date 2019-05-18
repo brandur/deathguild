@@ -7,15 +7,13 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild/modules/dgcommon"
-	"github.com/brandur/sorg/pool"
+	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 )
@@ -29,6 +27,9 @@ const (
 
 	// The location of the playlist index.
 	indexURL = baseURL + "/playdates"
+
+	// Concurrency level to run job pool at.
+	poolConcurrency = 20
 )
 
 // Conf contains configuration information for the command. It's extracted from
@@ -48,43 +49,50 @@ type PlaylistLink string
 
 var conf Conf
 var db *sql.DB
+var log modulir.LoggerInterface = &modulir.Logger{Level: modulir.LevelInfo}
 
 func main() {
-	log.SetLevel(log.DebugLevel)
-
 	err := envdecode.Decode(&conf)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	db, err = sql.Open("postgres", conf.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	log.Infof("Requesting index at: %v", indexURL)
 	resp, err := http.Get(indexURL)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 	defer resp.Body.Close()
 
 	links, err := scrapeIndex(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
-	var tasks []*pool.Task
+	pool := modulir.NewPool(log, poolConcurrency)
+	defer pool.Stop()
 
-	for _, link := range links {
-		l := link
-		tasks = append(tasks, pool.NewTask(func() error {
-			return handlePlaylist(l)
-		}))
+	for _, l := range links {
+		link := l
+
+		name := fmt.Sprintf("playlist: %v", link)
+		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
+			return true, handlePlaylist(link)
+		})
 	}
 
-	if !dgcommon.RunTasks(conf.Concurrency, tasks) {
-		defer os.Exit(1)
+	pool.Wait()
+	pool.LogErrors()
+	pool.LogSlowest()
+
+	if pool.JobsErrored != nil {
+		dgcommon.ExitWithError(fmt.Errorf("%v job(s) errored occurred during last loop",
+			len(pool.JobsErrored)))
 	}
 }
 

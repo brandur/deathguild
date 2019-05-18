@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/brandur/deathguild/modules/dgtesting"
 	assert "github.com/stretchr/testify/require"

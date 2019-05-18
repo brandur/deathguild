@@ -50,7 +50,7 @@ script:
   - make database-dump &&
     make database-compress &&
     rm -f public/deathguild.sql &&
-    make build-site &&
+    make build &&
     make deploy-site
 
 notifications:

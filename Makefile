@@ -1,10 +1,7 @@
 all: clean install test vet lint check-gofmt
 
-# alias
-build: build-site
-
-build-site:
-	$(GOPATH)/bin/dg-build-site
+build:
+	$(GOPATH)/bin/deathguild build
 
 check-gofmt:
 	scripts/check_gofmt.sh
@@ -106,8 +103,14 @@ install:
 lint:
 	$(GOPATH)/bin/golint -set_exit_status `go list ./... | grep -v /vendor/`
 
+loop:
+	$(GOPATH)/bin/deathguild loop
+
 scrape-playlists:
 	$(GOPATH)/bin/dg-scrape-playlists
+
+sigusr2:
+	killall -SIGUSR2 sorg
 
 # Read from env or fall back.
 TEST_DATABASE_URL ?= postgres://localhost/deathguild-test
@@ -116,18 +119,12 @@ test:
 	psql $(TEST_DATABASE_URL) < db/structure.sql > /dev/null
 	go test ./...
 
-test-bypass-cache:
+test-nocache:
 	psql $(TEST_DATABASE_URL) < db/structure.sql > /dev/null
 	go test -count=1 ./...
 
 vet:
 	go vet ./...
-
-# alias
-watch: watch-site
-
-watch-site:
-	fswatch -o content/ layouts/ pages/ views/ | xargs -n1 -I{} make build-site
 
 # This is designed to be compromise between being explicit and readability. We
 # can allow the find to discover everything in vendor/, but then the fswatch
@@ -136,10 +133,11 @@ watch-site:
 # directory on separately (fswatch will watch it recursively).
 GO_FILES := $(shell find . -type f -name "*.go" ! -path "./vendor/*")
 
-# We recompile our Go source when a file changes, but we also rebuild the site
-# because a change in source may have affected the build formula.
+# Meant to be used in conjuction with `forego start`. When a Go file changes,
+# this watch recompiles the project, then sends USR2 to the process which
+# prompts Modulir to re-exec it.
 watch-go:
-	fswatch -o $(GO_FILES) vendor/ | xargs -n1 -I{} make install build
+	fswatch -o $(GO_FILES) vendor/ | xargs -n1 -I{} make install sigusr2
 
 #
 # Helpers

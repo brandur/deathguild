@@ -9,9 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/brandur/deathguild/modules/dgcommon"
-	"github.com/brandur/sorg/pool"
+	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 	"github.com/zmb3/spotify"
@@ -23,6 +22,9 @@ import (
 // we encounter rate limiting from Spotify, we'll at least make some forward
 // progress.
 const batchSize = 20
+
+// Concurrency level to run job pool at.
+const poolConcurrency = batchSize
 
 // Conf contains configuration information for the command. It's extracted from
 // environment variables.
@@ -57,6 +59,7 @@ type Conf struct {
 var client *spotify.Client
 var conf Conf
 var db *sql.DB
+var log modulir.LoggerInterface = &modulir.Logger{Level: modulir.LevelInfo}
 
 // See trimParenthesis.
 var trimParenthesisRE = regexp.MustCompile(`^(.*?) \(.*\)$`)
@@ -64,21 +67,24 @@ var trimParenthesisRE = regexp.MustCompile(`^(.*?) \(.*\)$`)
 func main() {
 	err := envdecode.Decode(&conf)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
 
 	db, err = sql.Open("postgres", conf.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		dgcommon.ExitWithError(err)
 	}
+
+	pool := modulir.NewPool(log, poolConcurrency)
+	defer pool.Stop()
 
 	client = dgcommon.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
 
 	for {
-		done, exitCode, err := runLoop()
+		done, exitCode, err := runLoop(pool)
 		if err != nil {
-			log.Fatal(err)
+			dgcommon.ExitWithError(err)
 		}
 		if done {
 			defer os.Exit(exitCode)
@@ -156,7 +162,7 @@ func retrieveID(txn *sql.Tx, song *dgcommon.Song, numNotFound *int64) error {
 	return nil
 }
 
-func runLoop() (bool, int, error) {
+func runLoop(pool *modulir.Pool) (bool, int, error) {
 	txn, err := db.Begin()
 	if err != nil {
 		return false, 0, err
@@ -179,18 +185,26 @@ func runLoop() (bool, int, error) {
 		return true, 0, nil
 	}
 
-	var tasks []*pool.Task
 	var numNotFound int64
+	pool.StartRound()
 
-	for _, song := range songs {
-		s := song
-		tasks = append(tasks, pool.NewTask(func() error {
-			return retrieveID(txn, s, &numNotFound)
-		}))
+	for _, s := range songs {
+		song := s
+
+		name := fmt.Sprintf("song: %v (%v - %v)",
+			song.SpotifyID, song.Artist, song.Title)
+		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
+			return true, retrieveID(txn, song, &numNotFound)
+		})
 	}
 
-	if !dgcommon.RunTasks(conf.Concurrency, tasks) {
-		return true, 1, nil
+	pool.Wait()
+	pool.LogErrors()
+	pool.LogSlowest()
+
+	if pool.JobsErrored != nil {
+		return true, 0, fmt.Errorf("%v job(s) errored occurred during last loop",
+			len(pool.JobsErrored))
 	}
 
 	log.Infof("Retrieved %v Spotify ID(s); failed to find %v",

@@ -8,7 +8,7 @@
 
     h2 Years
     .playlist-years
-      p See also song and artist <a href="/statistics/{{.Year}}">all-time statistics</a>.
+      p See also song and artist <a href="/statistics">all-time statistics</a>.
       ul
         {{range .PlaylistYears}}
           li

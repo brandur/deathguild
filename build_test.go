@@ -30,5 +30,5 @@ func TestSpotifyPlaylistLink(t *testing.T) {
 
 func TestSpotifySongLink(t *testing.T) {
 	assert.Equal(t, "https://open.spotify.com/track/spotify-id",
-		"spotify-id")
+		spotifySongLink("spotify-id"))
 }

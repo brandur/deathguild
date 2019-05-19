@@ -8,8 +8,8 @@ import (
 	"github.com/brandur/deathguild/modules/dgquery"
 	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
-	"github.com/pkg/errors"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/zmb3/spotify"
 )
 

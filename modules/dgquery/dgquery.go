@@ -183,8 +183,8 @@ func SongRankings(txn *sql.Tx, years []int, limit int, requireSpotifyID bool) ([
 		)
 		SELECT artist, title, song_spotify_id, count(*)
 		FROM year_songs
-		` +
-		whereClause +
+		`+
+		whereClause+
 		`GROUP BY artist, title, song_spotify_id
 		ORDER BY count DESC
 		LIMIT $2`,

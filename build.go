@@ -391,21 +391,32 @@ func renderStatisticsYear(c *modulir.Context, db *sql.DB, playlistYear *Playlist
 func renderStatisticsYearInTransaction(c *modulir.Context, txn *sql.Tx,
 	viewsChanged bool, playlistYear *PlaylistYear) error {
 
-	/*
-		err := playlist.FetchSongs(txn)
-		if err != nil {
-			return err
-		}
-	*/
+	artistRankingsByPlays, err := loadArtistRankingsByPlays(txn, playlistYear.Year)
+	if err != nil {
+		return err
+	}
 
-	err := renderTemplate(
+	artistRankingsBySongs, err := loadArtistRankingsBySongs(txn, playlistYear.Year)
+	if err != nil {
+		return err
+	}
+
+	songRankings, err := loadSongRankings(txn, playlistYear.Year)
+	if err != nil {
+		return err
+	}
+
+	err = renderTemplate(
 		c,
 		viewsDir+"/statistics/year.ace",
 		c.TargetDir+"/statistics/"+fmt.Sprintf("%v", playlistYear.Year),
 		viewsChanged,
 		map[string]interface{}{
-			"Title": fmt.Sprintf("Statistics for %v", playlistYear.Year),
-			"Year":  playlistYear.Year,
+			"ArtistRankingsByPlays": artistRankingsByPlays,
+			"ArtistRankingsBySongs": artistRankingsBySongs,
+			"SongRankings":          songRankings,
+			"Title":                 fmt.Sprintf("Statistics for %v", playlistYear.Year),
+			"Year":                  playlistYear.Year,
 		},
 	)
 	if err != nil {
@@ -469,6 +480,143 @@ func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
 	return playlistYears, nil
 }
 
+// ArtistRanking is a record that ranks an artist by plays.
+type ArtistRanking struct {
+	Artist string
+	Count  int
+}
+
+func loadArtistRankingsByPlays(txn *sql.Tx, year int) ([]*ArtistRanking, error) {
+	rows, err := txn.Query(`
+		WITH year_songs AS (
+			SELECT *
+			FROM playlists p
+				INNER JOIN playlists_songs ps
+					ON p.id = ps.playlists_id
+				INNER JOIN songs s
+					ON s.id = ps.songs_id
+			WHERE date_part('year', p.day) = $1
+		)
+		SELECT artist, count(*)
+		FROM year_songs
+		GROUP BY artist
+		ORDER BY count DESC
+		LIMIT 15`,
+		year,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rankings []*ArtistRanking
+
+	for rows.Next() {
+		var ranking ArtistRanking
+		err = rows.Scan(
+			&ranking.Artist,
+			&ranking.Count,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		rankings = append(rankings, &ranking)
+	}
+
+	return rankings, nil
+}
+
+func loadArtistRankingsBySongs(txn *sql.Tx, year int) ([]*ArtistRanking, error) {
+	rows, err := txn.Query(`
+		WITH year_songs AS (
+			SELECT *
+			FROM playlists p
+				INNER JOIN playlists_songs ps
+					ON p.id = ps.playlists_id
+				INNER JOIN songs s
+					ON s.id = ps.songs_id
+			WHERE date_part('year', p.day) = $1
+		)
+		SELECT artist, count(distinct(title))
+		FROM year_songs
+		GROUP BY artist
+		ORDER BY count DESC
+		LIMIT 15`,
+		year,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rankings []*ArtistRanking
+
+	for rows.Next() {
+		var ranking ArtistRanking
+		err = rows.Scan(
+			&ranking.Artist,
+			&ranking.Count,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		rankings = append(rankings, &ranking)
+	}
+
+	return rankings, nil
+}
+
+// SongRanking is a record that ranks an artist by plays.
+type SongRanking struct {
+	Artist string
+	Title  string
+	Count  int
+}
+
+func loadSongRankings(txn *sql.Tx, year int) ([]*SongRanking, error) {
+	rows, err := txn.Query(`
+		WITH year_songs AS (
+			SELECT *
+			FROM playlists p
+				INNER JOIN playlists_songs ps
+					ON p.id = ps.playlists_id
+				INNER JOIN songs s
+					ON s.id = ps.songs_id
+			WHERE date_part('year', p.day) = $1
+		)
+		SELECT artist, title, count(*)
+		FROM year_songs
+		GROUP BY artist, title
+		ORDER BY count DESC
+		LIMIT 15`,
+		year,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rankings []*SongRanking
+
+	for rows.Next() {
+		var ranking SongRanking
+		err = rows.Scan(
+			&ranking.Artist,
+			&ranking.Title,
+			&ranking.Count,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		rankings = append(rankings, &ranking)
+	}
+
+	return rankings, nil
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -480,10 +628,17 @@ func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
 //////////////////////////////////////////////////////////////////////////////
 
 var templateFuncMap = template.FuncMap{
+	"Add":                 add,
 	"PlaylistInfo":        playlistInfo,
 	"SpotifyPlaylistLink": spotifyPlaylistLink,
 	"SpotifySongLink":     spotifySongLink,
 	"VerboseDate":         verboseDate,
+}
+
+// Performs basic arithmetic because Go templates don't allow for this in any
+// other way.
+func add(x, y int) int {
+	return x + y
 }
 
 // Returns some basic length information about the playlist.

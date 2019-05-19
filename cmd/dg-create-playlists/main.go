@@ -17,8 +17,8 @@ const playlistAllTimeName = "Death Guild — Top of all-time"
 const playlistAllTimeDescription = `A compliation playlist of the top songs played at Death Guild for all time. See: https://deathguild.brandur.org/statistics`
 
 // Format for the names of Death Guild playlists.
-const playlistNameFormat = "Death Guild — %v"
-const playlistDescriptionFormat = `A playlist played at the Death Guild event of %v. See: https://deathguild.brandur.org/playlists/%v.`
+const playlistDayNameFormat = "Death Guild — %v"
+const playlistDayDescriptionFormat = `A playlist played at the Death Guild event of %v. See: https://deathguild.brandur.org/playlists/%v.`
 
 const playlistYearNameFormat = "Death Guild — Top of %v"
 const playlistYearDescriptionFormat = `A compliation playlist of the top songs played at Death Guild in %v. See: https://deathguild.brandur.org/statistics/%v.`
@@ -186,8 +186,8 @@ func createPlaylistForDay(playlist *dgcommon.Playlist) (bool, error) {
 		return false, err
 	}
 
-	name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
-	description := fmt.Sprintf(playlistDescriptionFormat,
+	name := fmt.Sprintf(playlistDayNameFormat, playlist.FormattedDay())
+	description := fmt.Sprintf(playlistDayDescriptionFormat,
 		playlist.FormattedDay(), playlist.FormattedDay())
 
 	spotifyIDs := make([]spotify.ID, len(playlist.Songs))

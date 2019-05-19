@@ -27,28 +27,29 @@
           td.center {{$ranking.Count}}
       {{end}}
 
-    table
-      caption Artist ranking by number of plays
-      tr.header
-        th
-        th Artist
-        th # Plays
-      {{range $i, $ranking := .ArtistRankingsByPlays}}
-        tr
-          td.center.highlight {{Add $i 1}}
-          td {{$ranking.Artist}}
-          td.center {{$ranking.Count}}
-      {{end}}
+    .artist-statistics
+      table
+        caption Artist ranking by number of plays
+        tr.header
+          th
+          th Artist
+          th # Plays
+        {{range $i, $ranking := .ArtistRankingsByPlays}}
+          tr
+            td.center.highlight {{Add $i 1}}
+            td {{$ranking.Artist}}
+            td.center {{$ranking.Count}}
+        {{end}}
 
-    table
-      caption Artist ranking by unique songs played
-      tr.header
-        th
-        th Artist
-        th # Songs
-      {{range $i, $ranking := .ArtistRankingsBySongs}}
-        tr
-          td.center.highlight {{Add $i 1}}
-          td {{$ranking.Artist}}
-          td.center {{$ranking.Count}}
-      {{end}}
+      table
+        caption Artist ranking by unique songs played
+        tr.header
+          th
+          th Artist
+          th # Songs
+        {{range $i, $ranking := .ArtistRankingsBySongs}}
+          tr
+            td.center.highlight {{Add $i 1}}
+            td {{$ranking.Artist}}
+            td.center {{$ranking.Count}}
+        {{end}}

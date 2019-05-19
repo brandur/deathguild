@@ -110,7 +110,7 @@ scrape-playlists:
 	$(GOPATH)/bin/dg-scrape-playlists
 
 sigusr2:
-	killall -SIGUSR2 sorg
+	killall -SIGUSR2 deathguild
 
 # Read from env or fall back.
 TEST_DATABASE_URL ?= postgres://localhost/deathguild-test

@@ -9,7 +9,7 @@
     p This event occurred on {{VerboseDate .Playlist.Day}}.
     p {{PlaylistInfo .Playlist | HTML}}
     p
-      a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist.
+      a.spotify href={{SpotifyPlaylistLink .Playlist}} Spotify playlist
     table
       caption Playlist
       tr.header
@@ -24,8 +24,7 @@
           td {{.Title}}
           td.center
             {{if ne .SpotifyID ""}}
-              span.spotify_id
-                a href={{SpotifySongLink .SpotifyID}} {{.SpotifyID}}
+              a.small.spotify href={{SpotifySongLink .SpotifyID}} {{.SpotifyID}}
             {{end}}
       {{end}}
 

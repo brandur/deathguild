@@ -21,8 +21,7 @@
           td {{$ranking.Title}}
           td.center
             {{if ne $ranking.SpotifyID ""}}
-              span.spotify_id
-                a href={{SpotifySongLink $ranking.SpotifyID}} {{$ranking.SpotifyID}}
+              a.small.spotify href={{SpotifySongLink $ranking.SpotifyID}} {{$ranking.SpotifyID}}
             {{end}}
           td.center {{$ranking.Count}}
       {{end}}

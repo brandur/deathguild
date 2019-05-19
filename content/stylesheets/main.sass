@@ -34,8 +34,22 @@ html
       &:hover
         border-bottom: 1px solid $highlight
 
+    &.small
+      font-size: 0.55rem !important
+
     &.spotify
-      font-size: 0.7rem
+      background: #fff
+      border: 1px solid #000
+      border-radius: 4px
+      color: #000
+      font-family: $sans_serif
+      font-size: 0.8rem
+      padding: 3px 6px
+      transition: background 0.3s, color 0.3s
+
+      &:hover
+        background: #000
+        color: $highlight
 
   .centered-section
     p, table
@@ -134,8 +148,11 @@ html
           color: $highlight
 
       th
+        font-family: $sans_serif
+        font-size: 0.6rem
         font-weight: bold
         line-height: 2em
+        text-transform: uppercase
 
       tr
         &.header

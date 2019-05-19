@@ -18,12 +18,14 @@
     {{range .PlaylistYears}}
       h2 id="year-{{.Year}}" {{.Year}}
       .playlist-year
-        ul
-          {{range .Playlists}}
-            li
-              a.playlist href="/playlists/{{.FormattedDay}}"
-                {{.FormattedDay}}
-              |  
-              a.spotify href={{SpotifyPlaylistLink . }} (Spotify playlist)
-          {{end}}
+        p See also song and artist <a href="/statistics/{{.Year}}">statistics for {{.Year}}</a>.
+        .playlist-year-playlists
+          ul
+            {{range .Playlists}}
+              li
+                a.playlist href="/playlists/{{.FormattedDay}}"
+                  {{.FormattedDay}}
+                |  
+                a.spotify href={{SpotifyPlaylistLink . }} (Spotify playlist)
+            {{end}}
     {{end}}

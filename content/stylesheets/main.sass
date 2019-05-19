@@ -56,7 +56,7 @@ html
 
   .width-constrained
     margin: 0 auto
-    max-width: 1500px
+    max-width: 1200px
 
   body
     background: #000
@@ -158,10 +158,6 @@ html
           color: #fff
 
     .playlist-years
-      //column-width: 100px
-      //-moz-column-width: 100px
-      //-webkit-column-width: 100px
-
       ul
         li
           display: inline
@@ -169,15 +165,19 @@ html
           margin: 10px
 
     .playlist-year
-      column-width: 250px
-      -moz-column-width: 250px
-      -webkit-column-width: 250px
+      p
+        max-width: none
 
-      li
-        line-height: 1.8em
-        break-inside: avoid
-        page-break-inside: avoid
-        -webkit-break-inside: avoid
+      .playlist-year-playlists
+        column-width: 250px
+        -moz-column-width: 250px
+        -webkit-column-width: 250px
+
+        li
+          line-height: 1.8em
+          break-inside: avoid
+          page-break-inside: avoid
+          -webkit-break-inside: avoid
 
 @media handheld, only screen and (max-width: 767px), only screen and (max-device-width: 767px)
   html

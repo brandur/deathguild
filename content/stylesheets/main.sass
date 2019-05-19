@@ -1,3 +1,9 @@
+$sans_serif: helvetica, arial, geneva, sans-serif
+$serif: 'Cormorant Garamond', georgia, serif
+
+$highlight: #fff
+$primary: #ddd
+
 html
   // Root font size. All other sizes with "rem" are relative to this.
   //
@@ -25,14 +31,29 @@ html
     &.spotify
       font-size: 0.7rem
 
+  .spotify_id
+    background: #fff
+    border-radius: 4px
+    color: #000
+    font-family: $sans_serif
+    font-size: 0.6rem
+    padding: 3px 6px
+
+    a
+      color: #000
+      text-decoration: none
+
   body
     background: #000
     color: #fff
-    font-family: 'Cormorant Garamond', georgia, serif
+    font-family: $serif
     margin: 40px 60px
 
+    #container
+      //margin: 0 auto
+      //max-width: 1200px
+
     h1
-      font-family: 'Cormorant Garamond', georgia, serif
       font-size: 10rem
       letter-spacing: -10px
       line-height: 0.8em
@@ -43,7 +64,6 @@ html
         letter-spacing: -8px
 
     h2
-      font-family: 'Cormorant Garamond', georgia, serif
       font-size: 4rem
       letter-spacing: -4px
       margin: 30px 0
@@ -64,13 +84,32 @@ html
     table
       border-collapse: separate
       border-spacing: 18px
+      max-width: 1200px
+      width: 100%
+
+      caption
+        border-bottom: 3px solid #fff
+        color: $highlight
+        font-size: 1.3rem
+        padding: 20px 0
 
       td
+        color: $primary
         line-height: 1em
+
+        &.center
+          text-align: center
 
       th
         font-weight: bold
         line-height: 2em
+
+      tr
+        &.header
+          color: $highlight
+
+          th
+            border-bottom: 2px solid #fff
 
     .footer
       color: #bbb

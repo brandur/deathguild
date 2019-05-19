@@ -7,19 +7,21 @@
   p
     a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist.
   table
-    tr
+    caption Playlist
+    tr.header
       th
       th Artist
       th Title
       th Spotify ID
     {{range .Playlist.Songs}}
       tr
-        td {{.Position}}
+        td.center {{.Position}}
         td {{.Artist}}
         td {{.Title}}
-        td
+        td.center
           {{if ne .SpotifyID ""}}
-            a href={{SpotifySongLink .SpotifyID}} {{.SpotifyID}}
+            span.spotify_id
+              a href={{SpotifySongLink .SpotifyID}} {{.SpotifyID}}
           {{end}}
     {{end}}
 

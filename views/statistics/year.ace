@@ -5,7 +5,7 @@
 
   table
     caption Song ranking by number of plays
-    tr
+    tr.header
       th
       th Artist
       th Title
@@ -13,38 +13,39 @@
       th Plays
     {{range $i, $ranking := .SongRankings}}
       tr
-        td {{Add $i 1}}
+        td.center {{Add $i 1}}
         td {{$ranking.Artist}}
         td {{$ranking.Title}}
-        td
+        td.center
           {{if ne $ranking.SpotifyID ""}}
-            a href={{SpotifySongLink $ranking.SpotifyID}} {{$ranking.SpotifyID}}
+            span.spotify_id
+              a href={{SpotifySongLink $ranking.SpotifyID}} {{$ranking.SpotifyID}}
           {{end}}
-        td {{$ranking.Count}}
+        td.center {{$ranking.Count}}
     {{end}}
 
   table
     caption Artist ranking by number of plays
-    tr
+    tr.header
       th
       th Artist
       th Plays
     {{range $i, $ranking := .ArtistRankingsByPlays}}
       tr
-        td {{Add $i 1}}
+        td.center {{Add $i 1}}
         td {{$ranking.Artist}}
-        td {{$ranking.Count}}
+        td.center {{$ranking.Count}}
     {{end}}
 
   table
     caption Artist ranking by unique songs played
-    tr
+    tr.header
       th
       th Artist
       th Songs
     {{range $i, $ranking := .ArtistRankingsBySongs}}
       tr
-        td {{Add $i 1}}
+        td.center {{Add $i 1}}
         td {{$ranking.Artist}}
-        td {{$ranking.Count}}
+        td.center {{$ranking.Count}}
     {{end}}

@@ -12,6 +12,7 @@
         li
           a href="#year-{{.Year}}" {{.Year}}
       {{end}}
+  .clear
 
   {{range .PlaylistYears}}
     h2 id="year-{{.Year}}" {{.Year}}

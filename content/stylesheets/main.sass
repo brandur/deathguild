@@ -4,6 +4,9 @@ $serif: 'Cormorant Garamond', georgia, serif
 $highlight: #fff
 $primary: #ddd
 
+.clear
+  clear: both
+
 html
   // Root font size. All other sizes with "rem" are relative to this.
   //
@@ -12,21 +15,24 @@ html
   font-size: 120%
 
   a
+    border-bottom: 1px solid $highlight
     color: #bbb
-    text-decoration: underline
+    padding: 3px 0
+    text-decoration: none
 
     &:hover
-      text-decoration: none
+      border-bottom: none
 
     &:visited
 
     &.playlist
+      border-bottom: 0
       color: #fff
       font-size: 1.2rem
       text-decoration: none
 
       &:hover
-        text-decoration: underline
+        border-bottom: 1px solid $highlight
 
     &.spotify
       font-size: 0.7rem
@@ -40,8 +46,8 @@ html
     padding: 3px 6px
 
     a
+      border-bottom: 0
       color: #000
-      text-decoration: none
 
   body
     background: #000
@@ -140,9 +146,15 @@ html
           color: #fff
 
     .playlist-years
-      column-width: 100px
-      -moz-column-width: 100px
-      -webkit-column-width: 100px
+      //column-width: 100px
+      //-moz-column-width: 100px
+      //-webkit-column-width: 100px
+
+      ul
+        li
+          display: inline
+          float: left
+          margin: 10px
 
     .playlist-year
       column-width: 250px

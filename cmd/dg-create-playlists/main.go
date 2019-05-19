@@ -100,6 +100,9 @@ func main() {
 		dgcommon.ExitWithError(err)
 	}
 
+	log.Infof("Starting work round")
+	pool.StartRound()
+
 	for {
 		done, exitCode, err := runLoop(pool)
 		if err != nil {
@@ -109,6 +112,15 @@ func main() {
 			defer os.Exit(exitCode)
 			break
 		}
+	}
+
+	pool.Wait()
+	pool.LogErrors()
+	pool.LogSlowest()
+
+	if pool.JobsErrored != nil {
+		dgcommon.ExitWithError(fmt.Errorf("%v job(s) errored occurred during last round",
+			len(pool.JobsErrored)))
 	}
 done:
 }
@@ -303,9 +315,6 @@ func runLoop(pool *modulir.Pool) (bool, int, error) {
 		return true, 0, nil
 	}
 
-	log.Infof("Starting work round")
-	pool.StartRound()
-
 	for _, p := range playlists {
 		playlist := p
 
@@ -313,15 +322,6 @@ func runLoop(pool *modulir.Pool) (bool, int, error) {
 		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
 			return createPlaylistForDay(playlist)
 		})
-	}
-
-	pool.Wait()
-	pool.LogErrors()
-	pool.LogSlowest()
-
-	if pool.JobsErrored != nil {
-		return true, 0, fmt.Errorf("%v job(s) errored occurred during last round",
-			len(pool.JobsErrored))
 	}
 
 	log.Infof("Created %v Spotify playlist(s)", len(playlists))

@@ -27,6 +27,6 @@
                 a.playlist href="/playlists/{{.FormattedDay}}"
                   {{.FormattedDay}}
                 |  
-                a.small.spotify href={{SpotifyPlaylistLink . }} style="margin-left: 5px;" Spotify playlist
+                a.small.spotify href={{SpotifyPlaylistLink .SpotifyID}} style="margin-left: 5px;" Spotify playlist
             {{end}}
     {{end}}

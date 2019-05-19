@@ -7,7 +7,7 @@
 
   .centered-section
     p This event occurred on {{VerboseDate .Playlist.Day}}.
-    p See the <a href="{{SpotifyPlaylistLink .Playlist}}" class="spotify">Spotify playlist</a>. {{PlaylistInfo .Playlist | HTML}}
+    p See the <a href="{{SpotifyPlaylistLink .Playlist.SpotifyID}}" class="spotify">Spotify playlist</a>. {{PlaylistInfo .Playlist | HTML}}
     table
       caption Playlist
       tr.header

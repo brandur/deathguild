@@ -427,10 +427,23 @@ func renderStatisticsInTransaction(c *modulir.Context, txn *sql.Tx, viewsChanged
 		return err
 	}
 
+	var slug string
+	if len(years) == 1 {
+		slug = fmt.Sprintf("%v", years[0])
+	} else {
+		slug = "all-time"
+	}
+
+	spotifyID, err := dgquery.SpecialPlaylistSpotifyID(txn, slug)
+	if err != nil {
+		return err
+	}
+
 	locals := map[string]interface{}{
 		"ArtistRankingsByPlays": artistRankingsByPlays,
 		"ArtistRankingsBySongs": artistRankingsBySongs,
 		"SongRankings":          songRankings,
+		"SpotifyID":             spotifyID,
 		"ViewportWidth":         "800",
 	}
 	if len(years) == 1 {
@@ -494,9 +507,9 @@ func playlistInfo(playlist *dgcommon.Playlist) string {
 		numWithSpotifyID, len(playlist.Songs), percent)
 }
 
-func spotifyPlaylistLink(playlist *dgcommon.Playlist) string {
+func spotifyPlaylistLink(spotifyID string) string {
 	return "https://open.spotify.com/user/" + conf.SpotifyUser +
-		"/playlist/" + playlist.SpotifyID
+		"/playlist/" + spotifyID
 }
 
 func spotifySongLink(spotifyID string) string {

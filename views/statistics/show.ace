@@ -6,6 +6,10 @@
   h1.playlist {{.Header}}
 
   .centered-section
+    {{if .SpotifyID}}
+      p See the <a href="{{SpotifyPlaylistLink .SpotifyID}}" class="spotify">Spotify playlist</a> for top songs of the year.
+    {{end}}
+
     table
       caption Song ranking by number of plays
       tr.header

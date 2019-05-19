@@ -221,3 +221,23 @@ func SongRankings(txn *sql.Tx, years []int, limit int, requireSpotifyID bool) ([
 
 	return rankings, nil
 }
+
+// SpecialPlaylistSpotifyID retrieves the Spotify ID for a special playlist
+// like a top for year or top for all-time.
+func SpecialPlaylistSpotifyID(txn *sql.Tx, slug string) (*string, error) {
+	row := txn.QueryRow(
+		`SELECT spotify_id FROM special_playlists WHERE slug = $1`,
+		slug,
+	)
+
+	var spotifyID string
+	err := row.Scan(&spotifyID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &spotifyID, nil
+}

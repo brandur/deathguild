@@ -13,7 +13,7 @@
       th # Plays
     {{range $i, $ranking := .SongRankings}}
       tr
-        td.center {{Add $i 1}}
+        td.center.highlight {{Add $i 1}}
         td {{$ranking.Artist}}
         td {{$ranking.Title}}
         td.center
@@ -32,7 +32,7 @@
       th # Plays
     {{range $i, $ranking := .ArtistRankingsByPlays}}
       tr
-        td.center {{Add $i 1}}
+        td.center.highlight {{Add $i 1}}
         td {{$ranking.Artist}}
         td.center {{$ranking.Count}}
     {{end}}
@@ -45,7 +45,7 @@
       th # Songs
     {{range $i, $ranking := .ArtistRankingsBySongs}}
       tr
-        td.center {{Add $i 1}}
+        td.center.highlight {{Add $i 1}}
         td {{$ranking.Artist}}
         td.center {{$ranking.Count}}
     {{end}}

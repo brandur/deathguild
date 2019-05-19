@@ -15,7 +15,7 @@
       th Spotify ID
     {{range .Playlist.Songs}}
       tr
-        td.center {{.Position}}
+        td.center.highlight {{.Position}}
         td {{.Artist}}
         td {{.Title}}
         td.center

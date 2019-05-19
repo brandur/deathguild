@@ -109,6 +109,7 @@ func build(c *modulir.Context) []error {
 		commonDirs := []string{
 			c.TargetDir + "/assets",
 			c.TargetDir + "/playlists",
+			c.TargetDir + "/statistics",
 			versionedAssetsDir,
 		}
 		for _, dir := range commonDirs {
@@ -166,8 +167,8 @@ func build(c *modulir.Context) []error {
 	// Playlists
 	//
 
-	for _, playlistYear := range playlistYears {
-		for _, p := range playlistYear.Playlists {
+	for _, y := range playlistYears {
+		for _, p := range y.Playlists {
 			playlist := p
 
 			name := fmt.Sprintf("playlist: %v", playlist.FormattedDay())
@@ -175,6 +176,19 @@ func build(c *modulir.Context) []error {
 				return renderPlaylist(c, db, playlist)
 			})
 		}
+	}
+
+	//
+	// Playlists
+	//
+
+	for _, y := range playlistYears {
+		playlistYear := y
+
+		name := fmt.Sprintf("statistics: %v", playlistYear.Year)
+		c.AddJob(name, func() (bool, error) {
+			return renderStatisticsYear(c, db, playlistYear)
+		})
 	}
 
 	//
@@ -226,17 +240,11 @@ var readDirCache = gocache.New(5*time.Minute, 10*time.Minute)
 //
 //////////////////////////////////////////////////////////////////////////////
 
-// PlaylistYear holds playlists grouped by year.
-type PlaylistYear struct {
-	Playlists []*dgcommon.Playlist
-	Year      int
-}
-
 //////////////////////////////////////////////////////////////////////////////
 //
 //
 //
-// Variables
+// Build functions
 //
 //
 //
@@ -268,6 +276,159 @@ func compileStylesheets(c *modulir.Context, sourceDir, target string) (bool, err
 	}
 
 	return true, dgassets.CompileStylesheets(c, sourceDir, target)
+}
+
+func renderIndex(c *modulir.Context, playlistYears []*PlaylistYear) (bool, error) {
+	viewsChanged := c.ChangedAny(append(
+		[]string{
+			layoutsMain,
+			viewsDir + "/index.ace",
+		},
+		partialViews...,
+	)...)
+	if !viewsChanged {
+		return false, nil
+	}
+
+	err := renderTemplate(
+		c,
+		viewsDir+"/index.ace",
+		c.TargetDir+"/index.html",
+		viewsChanged,
+		map[string]interface{}{
+			"PlaylistYears": playlistYears,
+			"Title":         "Death Guild Spotify Playlists",
+		},
+	)
+	return true, err
+}
+
+func renderPlaylist(c *modulir.Context, db *sql.DB, playlist *dgcommon.Playlist) (bool, error) {
+	viewsChanged := c.ChangedAny(append(
+		[]string{
+			layoutsMain,
+			viewsDir + "/playlist.ace",
+		},
+		partialViews...,
+	)...)
+	if !viewsChanged {
+		return false, nil
+	}
+
+	txn, err := db.Begin()
+	if err != nil {
+		return true, err
+	}
+
+	err = renderPlaylistInTransaction(c, txn, viewsChanged, playlist)
+	if err != nil {
+		return true, err
+	}
+
+	err = txn.Rollback()
+	if err != nil {
+		return true, err
+	}
+
+	return true, nil
+}
+
+func renderPlaylistInTransaction(c *modulir.Context, txn *sql.Tx,
+	viewsChanged bool, playlist *dgcommon.Playlist) error {
+
+	err := playlist.FetchSongs(txn)
+	if err != nil {
+		return err
+	}
+
+	err = renderTemplate(
+		c,
+		viewsDir+"/playlist.ace",
+		c.TargetDir+"/playlists/"+playlist.FormattedDay(),
+		viewsChanged,
+		map[string]interface{}{
+			"Playlist": playlist,
+			"Title":    "Playlist for " + playlist.FormattedDay(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func renderStatisticsYear(c *modulir.Context, db *sql.DB, playlistYear *PlaylistYear) (bool, error) {
+	viewsChanged := c.ChangedAny(append(
+		[]string{
+			layoutsMain,
+			viewsDir + "/statistics/year.ace",
+		},
+		partialViews...,
+	)...)
+	if !viewsChanged {
+		return false, nil
+	}
+
+	txn, err := db.Begin()
+	if err != nil {
+		return true, err
+	}
+
+	err = renderStatisticsYearInTransaction(c, txn, viewsChanged, playlistYear)
+	if err != nil {
+		return true, err
+	}
+
+	err = txn.Rollback()
+	if err != nil {
+		return true, err
+	}
+
+	return true, nil
+}
+
+func renderStatisticsYearInTransaction(c *modulir.Context, txn *sql.Tx,
+	viewsChanged bool, playlistYear *PlaylistYear) error {
+
+	/*
+		err := playlist.FetchSongs(txn)
+		if err != nil {
+			return err
+		}
+	*/
+
+	err := renderTemplate(
+		c,
+		viewsDir+"/statistics/year.ace",
+		c.TargetDir+"/statistics/"+fmt.Sprintf("%v", playlistYear.Year),
+		viewsChanged,
+		map[string]interface{}{
+			"Title": fmt.Sprintf("Statistics for %v", playlistYear.Year),
+			"Year":  playlistYear.Year,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+//
+//
+// Query functions
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////
+
+// PlaylistYear holds playlists grouped by year.
+type PlaylistYear struct {
+	Playlists []*dgcommon.Playlist
+	Year      int
 }
 
 func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
@@ -308,6 +469,23 @@ func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
 	return playlistYears, nil
 }
 
+//////////////////////////////////////////////////////////////////////////////
+//
+//
+//
+// Template functions
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////
+
+var templateFuncMap = template.FuncMap{
+	"PlaylistInfo":        playlistInfo,
+	"SpotifyPlaylistLink": spotifyPlaylistLink,
+	"SpotifySongLink":     spotifySongLink,
+	"VerboseDate":         verboseDate,
+}
+
 // Returns some basic length information about the playlist.
 func playlistInfo(playlist *dgcommon.Playlist) string {
 	var numWithSpotifyID int
@@ -322,6 +500,29 @@ func playlistInfo(playlist *dgcommon.Playlist) string {
 	return fmt.Sprintf("%v songs. %v songs (%.1f%%) were found in Spotify.",
 		len(playlist.Songs), numWithSpotifyID, percent)
 }
+
+func spotifyPlaylistLink(playlist *dgcommon.Playlist) string {
+	return "https://open.spotify.com/user/" + conf.SpotifyUser +
+		"/playlist/" + playlist.SpotifyID
+}
+
+func spotifySongLink(song *dgcommon.Song) string {
+	return "https://open.spotify.com/track/" + song.SpotifyID
+}
+
+func verboseDate(t time.Time) string {
+	return t.Format("January 2, 2006")
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+//
+//
+// Other functions
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////
 
 func readDirCached(c *modulir.Context, source string,
 	opts *mfile.ReadDirOptions) ([]string, error) {
@@ -349,85 +550,9 @@ func readDirCached(c *modulir.Context, source string,
 	return files, nil
 }
 
-func renderIndex(c *modulir.Context, playlistYears []*PlaylistYear) (bool, error) {
-	viewsChanged := c.ChangedAny(append(
-		[]string{
-			layoutsMain,
-			viewsDir + "/index.ace",
-		},
-		partialViews...,
-	)...)
-	if !viewsChanged {
-		return false, nil
-	}
+func renderTemplate(c *modulir.Context, view, target string, dynamicReload bool,
+	locals map[string]interface{}) error {
 
-	err := renderTemplate(
-		c,
-		viewsDir+"/index.ace",
-		c.TargetDir+"/index.html",
-		map[string]interface{}{
-			"PlaylistYears": playlistYears,
-			"Title":         "Death Guild Spotify Playlists",
-		},
-	)
-	return true, err
-}
-
-func renderPlaylist(c *modulir.Context, db *sql.DB, playlist *dgcommon.Playlist) (bool, error) {
-	viewsChanged := c.ChangedAny(append(
-		[]string{
-			layoutsMain,
-			viewsDir + "/playlist.ace",
-		},
-		partialViews...,
-	)...)
-	if !viewsChanged {
-		return false, nil
-	}
-
-	txn, err := db.Begin()
-	if err != nil {
-		return true, err
-	}
-
-	err = renderPlaylistInTransaction(c, txn, playlist)
-	if err != nil {
-		return true, err
-	}
-
-	err = txn.Rollback()
-	if err != nil {
-		return true, err
-	}
-
-	return true, nil
-}
-
-func renderPlaylistInTransaction(c *modulir.Context, txn *sql.Tx,
-	playlist *dgcommon.Playlist) error {
-
-	err := playlist.FetchSongs(txn)
-	if err != nil {
-		return err
-	}
-
-	err = renderTemplate(
-		c,
-		viewsDir+"/playlist.ace",
-		c.TargetDir+"/playlists/"+playlist.FormattedDay(),
-		map[string]interface{}{
-			"Playlist": playlist,
-			"Title":    "Playlist for " + playlist.FormattedDay(),
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func renderTemplate(c *modulir.Context, view, target string, locals map[string]interface{}) error {
 	allLocals := map[string]interface{}{
 		"DGEnv":             conf.DGEnv,
 		"GoogleAnalyticsID": conf.GoogleAnalyticsID,
@@ -441,29 +566,16 @@ func renderTemplate(c *modulir.Context, view, target string, locals map[string]i
 		allLocals[k] = v
 	}
 
-	err := mace.RenderFile(c, layoutsMain, view, target,
-		&ace.Options{FuncMap: template.FuncMap{
-			"PlaylistInfo":        playlistInfo,
-			"SpotifyPlaylistLink": spotifyPlaylistLink,
-			"SpotifySongLink":     spotifySongLink,
-			"VerboseDate":         verboseDate,
-		}}, allLocals)
+	options := &ace.Options{FuncMap: templateFuncMap}
+	if dynamicReload {
+		options.DynamicReload = true
+	}
+
+	err := mace.RenderFile(c, layoutsMain, view, target, options, allLocals)
+
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func spotifyPlaylistLink(playlist *dgcommon.Playlist) string {
-	return "https://open.spotify.com/user/" + conf.SpotifyUser +
-		"/playlist/" + playlist.SpotifyID
-}
-
-func spotifySongLink(song *dgcommon.Song) string {
-	return "https://open.spotify.com/track/" + song.SpotifyID
-}
-
-func verboseDate(t time.Time) string {
-	return t.Format("January 2, 2006")
 }

@@ -1,0 +1,4 @@
+= content main
+  p
+    a href="/" ← Playlists
+  h1.playlist {{.Year}} Statistics

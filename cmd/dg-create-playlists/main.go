@@ -124,28 +124,17 @@ func createPlaylist(name, description string) (spotify.ID, error) {
 }
 
 func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
-	playlist *dgcommon.Playlist) error {
-
-	name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
-	description := fmt.Sprintf(playlistDescriptionFormat,
-		playlist.FormattedDay(), playlist.FormattedDay())
+	name, description string, songIDs []spotify.ID) (spotify.ID, error) {
 
 	playlistID, ok := playlistMap[name]
 	if !ok {
 		var err error
 		playlistID, err = createPlaylist(name, description)
 		if err != nil {
-			return err
+			return "", err
 		}
 	} else {
 		log.Debugf(`Found cached playlist: "%v" (ID %v)`, name, playlistID)
-	}
-
-	var songIDs []spotify.ID
-	for _, song := range playlist.Songs {
-		if song.SpotifyID != "" {
-			songIDs = append(songIDs, spotify.ID(song.SpotifyID))
-		}
 	}
 
 	// Spotify only allows us to add 100 tracks at once.
@@ -160,18 +149,12 @@ func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 
 	err := client.ReplacePlaylistTracks(playlistID, songIDs...)
 	if err != nil {
-		return err
-	}
-
-	playlist.SpotifyID = string(playlistID)
-	err = updatePlaylist(txn, playlist)
-	if err != nil {
-		return err
+		return "", err
 	}
 
 	log.Debugf(`Updated playlist: "%v" (ID %v) with %v song(s)`,
-		name, playlistID, len(playlist.Songs))
-	return nil
+		name, playlistID, len(songIDs))
+	return playlistID, nil
 }
 
 func getCurrentUserID() (string, error) {
@@ -294,7 +277,27 @@ func runLoop(pool *modulir.Pool) (bool, int, error) {
 
 		name := fmt.Sprintf("playlist: %v", playlist.FormattedDay())
 		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
-			return true, createPlaylistWithSongs(txn, playlistMap, p)
+			name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
+			description := fmt.Sprintf(playlistDescriptionFormat,
+				playlist.FormattedDay(), playlist.FormattedDay())
+
+			spotifyIDs := make([]spotify.ID, len(playlist.Songs))
+			for i, song := range playlist.Songs {
+				spotifyIDs[i] = spotify.ID(song.SpotifyID)
+			}
+
+			playlistID, err := createPlaylistWithSongs(txn, playlistMap, name, description, spotifyIDs)
+			if err != nil {
+				return true, err
+			}
+
+			playlist.SpotifyID = string(playlistID)
+			err = updatePlaylist(txn, playlist)
+			if err != nil {
+				return true, err
+			}
+
+			return true, nil
 		})
 	}
 

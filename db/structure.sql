@@ -16,6 +16,7 @@ BEGIN;
 DROP TABLE IF EXISTS playlists CASCADE;
 DROP TABLE IF EXISTS playlists_songs CASCADE;
 DROP TABLE IF EXISTS songs CASCADE;
+DROP TABLE IF EXISTS special_playlists CASCADE;
 
 --
 -- playlists
@@ -27,6 +28,18 @@ CREATE TABLE playlists (
     id bigserial PRIMARY KEY,
     day date NOT NULL UNIQUE,
     spotify_id TEXT
+);
+
+--
+-- special_playlists
+--
+-- A table that allows us to track the Spotify IDs of "special" playlists --
+-- for example, top songs of the year or top songs of all-time.
+--
+CREATE TABLE special_playlists (
+    id bigserial PRIMARY KEY,
+    slug TEXT UNIQUE NOT NULL,
+    spotify_id TEXT NOT NULL
 );
 
 --

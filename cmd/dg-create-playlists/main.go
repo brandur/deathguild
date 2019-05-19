@@ -219,14 +219,27 @@ func createPlaylistForYear(years []int, name, description string) (bool, error) 
 		spotifyIDs[i] = spotify.ID(ranking.SpotifyID)
 	}
 
-	_, err = createPlaylistWithSongs(txn, playlistMap, name, description, spotifyIDs)
+	playlistID, err := createPlaylistWithSongs(txn, playlistMap, name, description, spotifyIDs)
 	if err != nil {
 		return true, err
 	}
 
+	var slug string
+	if len(years) == 1 {
+		slug = fmt.Sprintf("%v", years[0])
+	} else {
+		slug = "all-time"
+	}
+
+	err = updatePlaylistSpecial(txn, slug, playlistID)
+	if err != nil {
+		return true, errors.Wrapf(err,
+			"Error updating special playlist '%v' spotify ID", slug)
+	}
+
 	err = txn.Commit()
 	if err != nil {
-		return true, err
+		return true, errors.Wrap(err, "Error committing transaction")
 	}
 
 	return true, nil
@@ -408,6 +421,20 @@ func updatePlaylist(txn *sql.Tx, playlist *dgcommon.Playlist) error {
 		WHERE id = $2`,
 		spotifyID,
 		playlist.ID,
+	)
+	return err
+}
+
+func updatePlaylistSpecial(txn *sql.Tx, slug string, spotifyID spotify.ID) error {
+	_, err := txn.Exec(`
+		INSERT INTO special_playlists
+			(spotify_id, slug)
+		VALUES
+			($1, $2)
+		ON CONFLICT (slug)
+			DO UPDATE SET spotify_id = EXCLUDED.spotify_id`,
+		string(spotifyID),
+		slug,
 	)
 	return err
 }

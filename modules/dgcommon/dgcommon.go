@@ -11,7 +11,7 @@ const (
 	// Release allows CSS and JS assets to be invalidated quickly by changing
 	// their URL. Bump this number whenever something significant changes that
 	// should be invalidated as quickly as possible.
-	Release = "3"
+	Release = "4"
 )
 
 // Playlist is a playlist for a single night of Deathguild.

@@ -6,15 +6,22 @@ import (
 	"os"
 
 	"github.com/brandur/deathguild/modules/dgcommon"
+	"github.com/brandur/deathguild/modules/dgquery"
 	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
 	_ "github.com/lib/pq"
 	"github.com/zmb3/spotify"
 )
 
+const playlistAllTimeName = "Death Guild — Top of all-time"
+const playlistAllTimeDescription = `A compliation playlist of the top songs played at Death Guild for all time. See: https://deathguild.brandur.org/statistics`
+
 // Format for the names of Death Guild playlists.
 const playlistNameFormat = "Death Guild — %v"
 const playlistDescriptionFormat = `A playlist played at the Death Guild event of %v. See: https://deathguild.brandur.org/playlists/%v.`
+
+const playlistYearNameFormat = "Death Guild — Top of %v"
+const playlistYearDescriptionFormat = `A compliation playlist of the top songs played at Death Guild in %v. See: https://deathguild.brandur.org/statistics/%v.`
 
 // Concurrency level to run job pool at.
 const poolConcurrency = 30
@@ -71,6 +78,11 @@ func main() {
 		dgcommon.ExitWithError(err)
 	}
 
+	playlistYears, err := dgquery.PlaylistYears(txn)
+	if err != nil {
+		dgcommon.ExitWithError(err)
+	}
+
 	err = txn.Rollback()
 	if err != nil {
 		dgcommon.ExitWithError(err)
@@ -84,6 +96,9 @@ func main() {
 
 	pool = modulir.NewPool(log, poolConcurrency)
 	defer pool.Stop()
+
+	log.Infof("Starting work round")
+	pool.StartRound()
 
 	client = dgcommon.GetSpotifyClient(
 		conf.ClientID, conf.ClientSecret, conf.RefreshToken)
@@ -100,9 +115,39 @@ func main() {
 		dgcommon.ExitWithError(err)
 	}
 
-	log.Infof("Starting work round")
-	pool.StartRound()
+	// All-time playlists
+	{
+		allYears := make([]int, len(playlistYears))
+		for i, year := range playlistYears {
+			allYears[i] = year.Year
+		}
 
+		pool.Jobs <- modulir.NewJob("playlist: all-time", func() (bool, error) {
+			return createPlaylistForYear(
+				allYears,
+				playlistAllTimeName,
+				playlistAllTimeDescription,
+			)
+		})
+	}
+
+	// Per-year playlists
+	{
+		for _, y := range playlistYears {
+			playlistYear := y
+
+			name := fmt.Sprintf("playlist: %v", playlistYear.Year)
+			pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
+				return createPlaylistForYear(
+					[]int{playlistYear.Year},
+					fmt.Sprintf(playlistYearNameFormat, playlistYear.Year),
+					fmt.Sprintf(playlistYearDescriptionFormat, playlistYear.Year, playlistYear.Year),
+				)
+			})
+		}
+	}
+
+	// Per-day playlists
 	for {
 		done, exitCode, err := runLoop(pool)
 		if err != nil {
@@ -157,6 +202,35 @@ func createPlaylistForDay(playlist *dgcommon.Playlist) (bool, error) {
 
 	playlist.SpotifyID = string(playlistID)
 	err = updatePlaylist(txn, playlist)
+	if err != nil {
+		return true, err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return true, err
+	}
+
+	return true, nil
+}
+
+func createPlaylistForYear(years []int, name, description string) (bool, error) {
+	txn, err := db.Begin()
+	if err != nil {
+		return false, err
+	}
+
+	songRankings, err := dgquery.SongRankings(txn, years, 50)
+	if err != nil {
+		return false, err
+	}
+
+	spotifyIDs := make([]spotify.ID, len(songRankings))
+	for i, ranking := range songRankings {
+		spotifyIDs[i] = spotify.ID(ranking.SpotifyID)
+	}
+
+	_, err = createPlaylistWithSongs(txn, playlistMap, name, description, spotifyIDs)
 	if err != nil {
 		return true, err
 	}

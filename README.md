@@ -17,7 +17,7 @@ psql deathguild < db/structure.sql
 make install
 
 # you'll need to fill in Spotify credentials here
-cp .env.sample .env
+cp .envrc.sample .envrc
 
 export $(cat .env)
 
@@ -31,10 +31,11 @@ dg-enrich-songs
 dg-create-playlists
 
 # builds a static site linking the new playlists
-dg-build-site
+deathguild build
 
-# serves the built static site so it can be viewed locally
-dg-serve-site
+# alternatively, builds static site and sits in a build
+# loop while also serving locally on `PORT` (default 5004)
+deathguild loop
 
 # deploy the built site to S3
 export AWS_ACCESS_KEY_ID=
@@ -42,11 +43,6 @@ export AWS_SECRET_ACCESS_KEY=
 export S3_BUCKET=
 make deploy-site
 ```
-
-A `Procfile` provides a watch/rebuild/serve loop for iterating on the site:
-
-    go get -u github.com/ddollar/forego
-    forego start
 
 ## Deployment
 

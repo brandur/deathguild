@@ -381,7 +381,7 @@ func renderStatistics(c *modulir.Context, db *sql.DB,
 	viewsChanged := c.ChangedAny(append(
 		[]string{
 			layoutsMain,
-			viewsDir + "/statistics/year.ace",
+			viewsDir + "/statistics/show.ace",
 		},
 		partialViews...,
 	)...)
@@ -440,7 +440,7 @@ func renderStatisticsInTransaction(c *modulir.Context, txn *sql.Tx, viewsChanged
 
 	err = renderTemplate(
 		c,
-		viewsDir+"/statistics/year.ace",
+		viewsDir+"/statistics/show.ace",
 		target,
 		viewsChanged,
 		locals,

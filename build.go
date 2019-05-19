@@ -431,9 +431,10 @@ func renderStatisticsInTransaction(c *modulir.Context, txn *sql.Tx, viewsChanged
 		"SongRankings":          songRankings,
 	}
 	if len(years) == 1 {
+		locals["Header"] = years[0]
 		locals["Title"] = fmt.Sprintf("Statistics for %v", years[0])
-		locals["Year"] = years[0]
 	} else {
+		locals["Header"] = "All-time"
 		locals["Title"] = "All-time Statistics"
 	}
 

@@ -123,6 +123,40 @@ func createPlaylist(name, description string) (spotify.ID, error) {
 	return playlist.SimplePlaylist.ID, nil
 }
 
+func createPlaylistForDay(playlist *dgcommon.Playlist) (bool, error) {
+	txn, err := db.Begin()
+	if err != nil {
+		return false, err
+	}
+
+	name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
+	description := fmt.Sprintf(playlistDescriptionFormat,
+		playlist.FormattedDay(), playlist.FormattedDay())
+
+	spotifyIDs := make([]spotify.ID, len(playlist.Songs))
+	for i, song := range playlist.Songs {
+		spotifyIDs[i] = spotify.ID(song.SpotifyID)
+	}
+
+	playlistID, err := createPlaylistWithSongs(txn, playlistMap, name, description, spotifyIDs)
+	if err != nil {
+		return true, err
+	}
+
+	playlist.SpotifyID = string(playlistID)
+	err = updatePlaylist(txn, playlist)
+	if err != nil {
+		return true, err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return true, err
+	}
+
+	return true, nil
+}
+
 func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 	name, description string, songIDs []spotify.ID) (spotify.ID, error) {
 
@@ -277,27 +311,7 @@ func runLoop(pool *modulir.Pool) (bool, int, error) {
 
 		name := fmt.Sprintf("playlist: %v", playlist.FormattedDay())
 		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
-			name := fmt.Sprintf(playlistNameFormat, playlist.FormattedDay())
-			description := fmt.Sprintf(playlistDescriptionFormat,
-				playlist.FormattedDay(), playlist.FormattedDay())
-
-			spotifyIDs := make([]spotify.ID, len(playlist.Songs))
-			for i, song := range playlist.Songs {
-				spotifyIDs[i] = spotify.ID(song.SpotifyID)
-			}
-
-			playlistID, err := createPlaylistWithSongs(txn, playlistMap, name, description, spotifyIDs)
-			if err != nil {
-				return true, err
-			}
-
-			playlist.SpotifyID = string(playlistID)
-			err = updatePlaylist(txn, playlist)
-			if err != nil {
-				return true, err
-			}
-
-			return true, nil
+			return createPlaylistForDay(playlist)
 		})
 	}
 

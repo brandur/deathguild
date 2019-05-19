@@ -489,10 +489,11 @@ type ArtistRanking struct {
 	Count  int
 }
 
+// Loads artist rankings by total number of their songs played.
 func loadArtistRankingsByPlays(txn *sql.Tx, years []int, limit int) ([]*ArtistRanking, error) {
 	rows, err := txn.Query(`
 		WITH year_songs AS (
-			SELECT *
+			SELECT artist, title, s.spotify_id AS song_spotify_id
 			FROM playlists p
 				INNER JOIN playlists_songs ps
 					ON p.id = ps.playlists_id
@@ -531,10 +532,12 @@ func loadArtistRankingsByPlays(txn *sql.Tx, years []int, limit int) ([]*ArtistRa
 	return rankings, nil
 }
 
+// Loads artist rankings by the number of unique songs from each artist that
+// were played.
 func loadArtistRankingsBySongs(txn *sql.Tx, years []int, limit int) ([]*ArtistRanking, error) {
 	rows, err := txn.Query(`
 		WITH year_songs AS (
-			SELECT *
+			SELECT artist, title, s.spotify_id AS song_spotify_id
 			FROM playlists p
 				INNER JOIN playlists_songs ps
 					ON p.id = ps.playlists_id
@@ -575,15 +578,17 @@ func loadArtistRankingsBySongs(txn *sql.Tx, years []int, limit int) ([]*ArtistRa
 
 // SongRanking is a record that ranks an artist by plays.
 type SongRanking struct {
-	Artist string
-	Title  string
-	Count  int
+	Artist    string
+	Title     string
+	SpotifyID string
+	Count     int
 }
 
+// Loads songs by the number of plays.
 func loadSongRankings(txn *sql.Tx, years []int, limit int) ([]*SongRanking, error) {
 	rows, err := txn.Query(`
 		WITH year_songs AS (
-			SELECT *
+			SELECT artist, title, s.spotify_id AS song_spotify_id
 			FROM playlists p
 				INNER JOIN playlists_songs ps
 					ON p.id = ps.playlists_id
@@ -591,9 +596,9 @@ func loadSongRankings(txn *sql.Tx, years []int, limit int) ([]*SongRanking, erro
 					ON s.id = ps.songs_id
 			WHERE date_part('year', p.day) = any($1)
 		)
-		SELECT artist, title, count(*)
+		SELECT artist, title, song_spotify_id, count(*)
 		FROM year_songs
-		GROUP BY artist, title
+		GROUP BY artist, title, song_spotify_id
 		ORDER BY count DESC
 		LIMIT $2`,
 		pq.Array(years),
@@ -608,13 +613,20 @@ func loadSongRankings(txn *sql.Tx, years []int, limit int) ([]*SongRanking, erro
 
 	for rows.Next() {
 		var ranking SongRanking
+		var spotifyID *string
+
 		err = rows.Scan(
 			&ranking.Artist,
 			&ranking.Title,
+			&spotifyID,
 			&ranking.Count,
 		)
 		if err != nil {
 			return nil, err
+		}
+
+		if spotifyID != nil {
+			ranking.SpotifyID = *spotifyID
 		}
 
 		rankings = append(rankings, &ranking)
@@ -667,8 +679,8 @@ func spotifyPlaylistLink(playlist *dgcommon.Playlist) string {
 		"/playlist/" + playlist.SpotifyID
 }
 
-func spotifySongLink(song *dgcommon.Song) string {
-	return "https://open.spotify.com/track/" + song.SpotifyID
+func spotifySongLink(spotifyID string) string {
+	return "https://open.spotify.com/track/" + spotifyID
 }
 
 func verboseDate(t time.Time) string {

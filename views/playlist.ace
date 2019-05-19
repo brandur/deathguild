@@ -19,7 +19,7 @@
         td {{.Title}}
         td
           {{if ne .SpotifyID ""}}
-            a href={{SpotifySongLink .}} {{.SpotifyID}}
+            a href={{SpotifySongLink .SpotifyID}} {{.SpotifyID}}
           {{end}}
     {{end}}
 

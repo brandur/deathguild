@@ -29,8 +29,6 @@ func TestSpotifyPlaylistLink(t *testing.T) {
 }
 
 func TestSpotifySongLink(t *testing.T) {
-	song := &dgcommon.Song{SpotifyID: "spotify-id"}
-
 	assert.Equal(t, "https://open.spotify.com/track/spotify-id",
-		spotifySongLink(song))
+		"spotify-id")
 }

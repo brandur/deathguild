@@ -9,12 +9,17 @@
       th
       th Artist
       th Title
+      th Spotify ID
       th Plays
     {{range $i, $ranking := .SongRankings}}
       tr
         td {{Add $i 1}}
         td {{$ranking.Artist}}
         td {{$ranking.Title}}
+        td
+          {{if ne $ranking.SpotifyID ""}}
+            a href={{SpotifySongLink $ranking.SpotifyID}} {{$ranking.SpotifyID}}
+          {{end}}
         td {{$ranking.Count}}
     {{end}}
 

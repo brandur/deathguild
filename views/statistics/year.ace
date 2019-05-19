@@ -3,7 +3,11 @@
     a href="/" ← Playlists
   p.preheader
     span.preheader-inner Statistics
-  h1.playlist {{.Year}}
+  {{if .Year}}
+    h1.playlist {{.Year}}
+  {{else}}
+    h1.playlist All-time
+  {{end}}
 
   .centered-section
     table

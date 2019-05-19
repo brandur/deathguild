@@ -179,7 +179,23 @@ func build(c *modulir.Context) []error {
 	}
 
 	//
-	// Playlists
+	// Statistics (all-time)
+	//
+
+	{
+		allYears := make([]int, len(playlistYears))
+		for i, year := range playlistYears {
+			allYears[i] = year.Year
+		}
+
+		c.AddJob("statistics: all-time", func() (bool, error) {
+			return renderStatistics(c, db, allYears,
+				c.TargetDir+"/statistics/index.html")
+		})
+	}
+
+	//
+	// Statistics (annual)
 	//
 
 	for _, y := range playlistYears {
@@ -187,7 +203,8 @@ func build(c *modulir.Context) []error {
 
 		name := fmt.Sprintf("statistics: %v", playlistYear.Year)
 		c.AddJob(name, func() (bool, error) {
-			return renderStatisticsYear(c, db, playlistYear)
+			return renderStatistics(c, db, []int{playlistYear.Year},
+				c.TargetDir+"/statistics/"+fmt.Sprintf("%v", playlistYear.Year))
 		})
 	}
 
@@ -358,7 +375,9 @@ func renderPlaylistInTransaction(c *modulir.Context, txn *sql.Tx,
 	return nil
 }
 
-func renderStatisticsYear(c *modulir.Context, db *sql.DB, playlistYear *PlaylistYear) (bool, error) {
+func renderStatistics(c *modulir.Context, db *sql.DB,
+	years []int, target string) (bool, error) {
+
 	viewsChanged := c.ChangedAny(append(
 		[]string{
 			layoutsMain,
@@ -375,7 +394,7 @@ func renderStatisticsYear(c *modulir.Context, db *sql.DB, playlistYear *Playlist
 		return true, err
 	}
 
-	err = renderStatisticsYearInTransaction(c, txn, viewsChanged, playlistYear)
+	err = renderStatisticsInTransaction(c, txn, viewsChanged, years, target)
 	if err != nil {
 		return true, err
 	}
@@ -388,39 +407,42 @@ func renderStatisticsYear(c *modulir.Context, db *sql.DB, playlistYear *Playlist
 	return true, nil
 }
 
-func renderStatisticsYearInTransaction(c *modulir.Context, txn *sql.Tx,
-	viewsChanged bool, playlistYear *PlaylistYear) error {
+func renderStatisticsInTransaction(c *modulir.Context, txn *sql.Tx, viewsChanged bool,
+	years []int, target string) error {
 
-	artistRankingsByPlays, err := loadArtistRankingsByPlays(
-		txn, []int{playlistYear.Year}, 15)
+	artistRankingsByPlays, err := loadArtistRankingsByPlays(txn, years, 15)
 	if err != nil {
 		return err
 	}
 
-	artistRankingsBySongs, err := loadArtistRankingsBySongs(
-		txn, []int{playlistYear.Year}, 15)
+	artistRankingsBySongs, err := loadArtistRankingsBySongs(txn, years, 15)
 	if err != nil {
 		return err
 	}
 
-	songRankings, err := loadSongRankings(
-		txn, []int{playlistYear.Year}, 15)
+	songRankings, err := loadSongRankings(txn, years, 15)
 	if err != nil {
 		return err
+	}
+
+	locals := map[string]interface{}{
+		"ArtistRankingsByPlays": artistRankingsByPlays,
+		"ArtistRankingsBySongs": artistRankingsBySongs,
+		"SongRankings":          songRankings,
+	}
+	if len(years) == 1 {
+		locals["Title"] = fmt.Sprintf("Statistics for %v", years[0])
+		locals["Year"] = years[0]
+	} else {
+		locals["Title"] = "All-time Statistics"
 	}
 
 	err = renderTemplate(
 		c,
 		viewsDir+"/statistics/year.ace",
-		c.TargetDir+"/statistics/"+fmt.Sprintf("%v", playlistYear.Year),
+		target,
 		viewsChanged,
-		map[string]interface{}{
-			"ArtistRankingsByPlays": artistRankingsByPlays,
-			"ArtistRankingsBySongs": artistRankingsBySongs,
-			"SongRankings":          songRankings,
-			"Title":                 fmt.Sprintf("Statistics for %v", playlistYear.Year),
-			"Year":                  playlistYear.Year,
-		},
+		locals,
 	)
 	if err != nil {
 		return err

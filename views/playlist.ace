@@ -1,7 +1,9 @@
 = content main
   p
     a href="/" ← Playlists
-  h1.playlist Death Guild {{.Playlist.FormattedDay}}
+  p.preheader
+    span.preheader-inner Death Guild Playlist
+  h1.playlist {{.Playlist.FormattedDay}}
   p This event occurred on {{VerboseDate .Playlist.Day}}.
   p {{PlaylistInfo .Playlist | HTML}}
   p

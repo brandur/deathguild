@@ -1,7 +1,9 @@
 = content main
   p
     a href="/" ← Playlists
-  h1.playlist {{.Year}} Statistics
+  p.preheader
+    span.preheader-inner Statistics
+  h1.playlist {{.Year}}
 
   table
     caption Song ranking by number of plays

@@ -14,7 +14,7 @@ import (
 	"github.com/brandur/modulir"
 	"github.com/brandur/modulir/modules/mace"
 	"github.com/brandur/modulir/modules/mfile"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/yosssi/ace"
 )
@@ -391,17 +391,20 @@ func renderStatisticsYear(c *modulir.Context, db *sql.DB, playlistYear *Playlist
 func renderStatisticsYearInTransaction(c *modulir.Context, txn *sql.Tx,
 	viewsChanged bool, playlistYear *PlaylistYear) error {
 
-	artistRankingsByPlays, err := loadArtistRankingsByPlays(txn, playlistYear.Year)
+	artistRankingsByPlays, err := loadArtistRankingsByPlays(
+		txn, []int{playlistYear.Year}, 15)
 	if err != nil {
 		return err
 	}
 
-	artistRankingsBySongs, err := loadArtistRankingsBySongs(txn, playlistYear.Year)
+	artistRankingsBySongs, err := loadArtistRankingsBySongs(
+		txn, []int{playlistYear.Year}, 15)
 	if err != nil {
 		return err
 	}
 
-	songRankings, err := loadSongRankings(txn, playlistYear.Year)
+	songRankings, err := loadSongRankings(
+		txn, []int{playlistYear.Year}, 15)
 	if err != nil {
 		return err
 	}
@@ -486,7 +489,7 @@ type ArtistRanking struct {
 	Count  int
 }
 
-func loadArtistRankingsByPlays(txn *sql.Tx, year int) ([]*ArtistRanking, error) {
+func loadArtistRankingsByPlays(txn *sql.Tx, years []int, limit int) ([]*ArtistRanking, error) {
 	rows, err := txn.Query(`
 		WITH year_songs AS (
 			SELECT *
@@ -495,14 +498,15 @@ func loadArtistRankingsByPlays(txn *sql.Tx, year int) ([]*ArtistRanking, error) 
 					ON p.id = ps.playlists_id
 				INNER JOIN songs s
 					ON s.id = ps.songs_id
-			WHERE date_part('year', p.day) = $1
+			WHERE date_part('year', p.day) = any($1)
 		)
 		SELECT artist, count(*)
 		FROM year_songs
 		GROUP BY artist
 		ORDER BY count DESC
-		LIMIT 15`,
-		year,
+		LIMIT $2`,
+		pq.Array(years),
+		limit,
 	)
 	if err != nil {
 		return nil, err
@@ -527,7 +531,7 @@ func loadArtistRankingsByPlays(txn *sql.Tx, year int) ([]*ArtistRanking, error) 
 	return rankings, nil
 }
 
-func loadArtistRankingsBySongs(txn *sql.Tx, year int) ([]*ArtistRanking, error) {
+func loadArtistRankingsBySongs(txn *sql.Tx, years []int, limit int) ([]*ArtistRanking, error) {
 	rows, err := txn.Query(`
 		WITH year_songs AS (
 			SELECT *
@@ -536,14 +540,15 @@ func loadArtistRankingsBySongs(txn *sql.Tx, year int) ([]*ArtistRanking, error) 
 					ON p.id = ps.playlists_id
 				INNER JOIN songs s
 					ON s.id = ps.songs_id
-			WHERE date_part('year', p.day) = $1
+			WHERE date_part('year', p.day) = any($1)
 		)
 		SELECT artist, count(distinct(title))
 		FROM year_songs
 		GROUP BY artist
 		ORDER BY count DESC
-		LIMIT 15`,
-		year,
+		LIMIT $2`,
+		pq.Array(years),
+		limit,
 	)
 	if err != nil {
 		return nil, err
@@ -575,7 +580,7 @@ type SongRanking struct {
 	Count  int
 }
 
-func loadSongRankings(txn *sql.Tx, year int) ([]*SongRanking, error) {
+func loadSongRankings(txn *sql.Tx, years []int, limit int) ([]*SongRanking, error) {
 	rows, err := txn.Query(`
 		WITH year_songs AS (
 			SELECT *
@@ -584,14 +589,15 @@ func loadSongRankings(txn *sql.Tx, year int) ([]*SongRanking, error) {
 					ON p.id = ps.playlists_id
 				INNER JOIN songs s
 					ON s.id = ps.songs_id
-			WHERE date_part('year', p.day) = $1
+			WHERE date_part('year', p.day) = any($1)
 		)
 		SELECT artist, title, count(*)
 		FROM year_songs
 		GROUP BY artist, title
 		ORDER BY count DESC
-		LIMIT 15`,
-		year,
+		LIMIT $2`,
+		pq.Array(years),
+		limit,
 	)
 	if err != nil {
 		return nil, err

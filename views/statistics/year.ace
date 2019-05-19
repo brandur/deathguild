@@ -10,7 +10,7 @@
       th Artist
       th Title
       th Spotify ID
-      th Plays
+      th # Plays
     {{range $i, $ranking := .SongRankings}}
       tr
         td.center {{Add $i 1}}
@@ -29,7 +29,7 @@
     tr.header
       th
       th Artist
-      th Plays
+      th # Plays
     {{range $i, $ranking := .ArtistRankingsByPlays}}
       tr
         td.center {{Add $i 1}}
@@ -42,7 +42,7 @@
     tr.header
       th
       th Artist
-      th Songs
+      th # Songs
     {{range $i, $ranking := .ArtistRankingsBySongs}}
       tr
         td.center {{Add $i 1}}

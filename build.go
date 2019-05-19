@@ -137,7 +137,7 @@ func build(c *modulir.Context) []error {
 		}
 	}
 
-	playlistYears, err := loadPlaylistYears(txn)
+	playlistYears, err := dgquery.PlaylistYears(txn)
 	if err != nil {
 		return []error{err}
 	}
@@ -296,7 +296,7 @@ func compileStylesheets(c *modulir.Context, sourceDir, target string) (bool, err
 	return true, dgassets.CompileStylesheets(c, sourceDir, target)
 }
 
-func renderIndex(c *modulir.Context, playlistYears []*PlaylistYear) (bool, error) {
+func renderIndex(c *modulir.Context, playlistYears []*dgquery.PlaylistYear) (bool, error) {
 	viewsChanged := c.ChangedAny(append(
 		[]string{
 			layoutsMain,
@@ -451,60 +451,6 @@ func renderStatisticsInTransaction(c *modulir.Context, txn *sql.Tx, viewsChanged
 	}
 
 	return nil
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//
-//
-//
-// Query functions
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////////
-
-// PlaylistYear holds playlists grouped by year.
-type PlaylistYear struct {
-	Playlists []*dgcommon.Playlist
-	Year      int
-}
-
-func loadPlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
-	rows, err := txn.Query(`
-		SELECT id, day, spotify_id
-		FROM playlists
-		WHERE spotify_id IS NOT NULL
-		-- create the most recent first
-		ORDER BY day DESC`,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var playlistYear *PlaylistYear
-	var playlistYears []*PlaylistYear
-
-	for rows.Next() {
-		var playlist dgcommon.Playlist
-		err = rows.Scan(
-			&playlist.ID,
-			&playlist.Day,
-			&playlist.SpotifyID,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if playlistYear == nil || playlistYear.Year != playlist.Day.Year() {
-			playlistYear = &PlaylistYear{Year: playlist.Day.Year()}
-			playlistYears = append(playlistYears, playlistYear)
-		}
-
-		playlistYear.Playlists = append(playlistYear.Playlists, &playlist)
-	}
-
-	return playlistYears, nil
 }
 
 //////////////////////////////////////////////////////////////////////////////

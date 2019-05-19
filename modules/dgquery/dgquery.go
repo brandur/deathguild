@@ -3,6 +3,7 @@ package dgquery
 import (
 	"database/sql"
 
+	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/lib/pq"
 )
 
@@ -15,6 +16,51 @@ import (
 //
 //
 //////////////////////////////////////////////////////////////////////////////
+
+// PlaylistYear holds playlists grouped by year.
+type PlaylistYear struct {
+	Playlists []*dgcommon.Playlist
+	Year      int
+}
+
+// PlaylistYears loads playlists and groups them by year.
+func PlaylistYears(txn *sql.Tx) ([]*PlaylistYear, error) {
+	rows, err := txn.Query(`
+		SELECT id, day, spotify_id
+		FROM playlists
+		WHERE spotify_id IS NOT NULL
+		-- create the most recent first
+		ORDER BY day DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var playlistYear *PlaylistYear
+	var playlistYears []*PlaylistYear
+
+	for rows.Next() {
+		var playlist dgcommon.Playlist
+		err = rows.Scan(
+			&playlist.ID,
+			&playlist.Day,
+			&playlist.SpotifyID,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if playlistYear == nil || playlistYear.Year != playlist.Day.Year() {
+			playlistYear = &PlaylistYear{Year: playlist.Day.Year()}
+			playlistYears = append(playlistYears, playlistYear)
+		}
+
+		playlistYear.Playlists = append(playlistYear.Playlists, &playlist)
+	}
+
+	return playlistYears, nil
+}
 
 // ArtistRanking is a record that ranks an artist by plays.
 type ArtistRanking struct {

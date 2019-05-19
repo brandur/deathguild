@@ -13,15 +13,17 @@ import (
 	"github.com/zmb3/spotify"
 )
 
-const playlistAllTimeName = "Death Guild — Top of all-time"
-const playlistAllTimeDescription = `A compliation playlist of the top songs played at Death Guild for all time. See: https://deathguild.brandur.org/statistics`
+// Format for the names and descriptions of Death Guild playlists.
+const (
+	playlistAllTimeName        = "Death Guild — Top of all-time"
+	playlistAllTimeDescription = `A compliation playlist of the top songs played at Death Guild for all time. See: https://deathguild.brandur.org/statistics`
 
-// Format for the names of Death Guild playlists.
-const playlistDayNameFormat = "Death Guild — %v"
-const playlistDayDescriptionFormat = `A playlist played at the Death Guild event of %v. See: https://deathguild.brandur.org/playlists/%v.`
+	playlistDayNameFormat        = "Death Guild — %v"
+	playlistDayDescriptionFormat = `A playlist played at the Death Guild event of %v. See: https://deathguild.brandur.org/playlists/%v.`
 
-const playlistYearNameFormat = "Death Guild — Top of %v"
-const playlistYearDescriptionFormat = `A compliation playlist of the top songs played at Death Guild in %v. See: https://deathguild.brandur.org/statistics/%v.`
+	playlistYearNameFormat        = "Death Guild — Top of %v"
+	playlistYearDescriptionFormat = `A compliation playlist of the top songs played at Death Guild in %v. See: https://deathguild.brandur.org/statistics/%v.`
+)
 
 // Concurrency level to run job pool at.
 const poolConcurrency = 30

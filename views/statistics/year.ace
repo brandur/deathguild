@@ -5,49 +5,50 @@
     span.preheader-inner Statistics
   h1.playlist {{.Year}}
 
-  table
-    caption Song ranking by number of plays
-    tr.header
-      th
-      th Artist
-      th Title
-      th Spotify ID
-      th # Plays
-    {{range $i, $ranking := .SongRankings}}
-      tr
-        td.center.highlight {{Add $i 1}}
-        td {{$ranking.Artist}}
-        td {{$ranking.Title}}
-        td.center
-          {{if ne $ranking.SpotifyID ""}}
-            span.spotify_id
-              a href={{SpotifySongLink $ranking.SpotifyID}} {{$ranking.SpotifyID}}
-          {{end}}
-        td.center {{$ranking.Count}}
-    {{end}}
+  .centered-section
+    table
+      caption Song ranking by number of plays
+      tr.header
+        th
+        th Artist
+        th Title
+        th Spotify ID
+        th # Plays
+      {{range $i, $ranking := .SongRankings}}
+        tr
+          td.center.highlight {{Add $i 1}}
+          td {{$ranking.Artist}}
+          td {{$ranking.Title}}
+          td.center
+            {{if ne $ranking.SpotifyID ""}}
+              span.spotify_id
+                a href={{SpotifySongLink $ranking.SpotifyID}} {{$ranking.SpotifyID}}
+            {{end}}
+          td.center {{$ranking.Count}}
+      {{end}}
 
-  table
-    caption Artist ranking by number of plays
-    tr.header
-      th
-      th Artist
-      th # Plays
-    {{range $i, $ranking := .ArtistRankingsByPlays}}
-      tr
-        td.center.highlight {{Add $i 1}}
-        td {{$ranking.Artist}}
-        td.center {{$ranking.Count}}
-    {{end}}
+    table
+      caption Artist ranking by number of plays
+      tr.header
+        th
+        th Artist
+        th # Plays
+      {{range $i, $ranking := .ArtistRankingsByPlays}}
+        tr
+          td.center.highlight {{Add $i 1}}
+          td {{$ranking.Artist}}
+          td.center {{$ranking.Count}}
+      {{end}}
 
-  table
-    caption Artist ranking by unique songs played
-    tr.header
-      th
-      th Artist
-      th # Songs
-    {{range $i, $ranking := .ArtistRankingsBySongs}}
-      tr
-        td.center.highlight {{Add $i 1}}
-        td {{$ranking.Artist}}
-        td.center {{$ranking.Count}}
-    {{end}}
+    table
+      caption Artist ranking by unique songs played
+      tr.header
+        th
+        th Artist
+        th # Songs
+      {{range $i, $ranking := .ArtistRankingsBySongs}}
+        tr
+          td.center.highlight {{Add $i 1}}
+          td {{$ranking.Artist}}
+          td.center {{$ranking.Count}}
+      {{end}}

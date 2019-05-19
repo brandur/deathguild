@@ -4,27 +4,29 @@
   p.preheader
     span.preheader-inner Death Guild Playlist
   h1.playlist {{.Playlist.FormattedDay}}
-  p This event occurred on {{VerboseDate .Playlist.Day}}.
-  p {{PlaylistInfo .Playlist | HTML}}
-  p
-    a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist.
-  table
-    caption Playlist
-    tr.header
-      th
-      th Artist
-      th Title
-      th Spotify ID
-    {{range .Playlist.Songs}}
-      tr
-        td.center.highlight {{.Position}}
-        td {{.Artist}}
-        td {{.Title}}
-        td.center
-          {{if ne .SpotifyID ""}}
-            span.spotify_id
-              a href={{SpotifySongLink .SpotifyID}} {{.SpotifyID}}
-          {{end}}
-    {{end}}
+
+  .centered-section
+    p This event occurred on {{VerboseDate .Playlist.Day}}.
+    p {{PlaylistInfo .Playlist | HTML}}
+    p
+      a href={{SpotifyPlaylistLink .Playlist}} Spotify playlist.
+    table
+      caption Playlist
+      tr.header
+        th
+        th Artist
+        th Title
+        th Spotify ID
+      {{range .Playlist.Songs}}
+        tr
+          td.center.highlight {{.Position}}
+          td {{.Artist}}
+          td {{.Title}}
+          td.center
+            {{if ne .SpotifyID ""}}
+              span.spotify_id
+                a href={{SpotifySongLink .SpotifyID}} {{.SpotifyID}}
+            {{end}}
+      {{end}}
 
 

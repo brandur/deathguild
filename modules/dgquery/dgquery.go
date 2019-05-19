@@ -165,7 +165,12 @@ type SongRanking struct {
 }
 
 // SongRankings loads songs by the number of plays.
-func SongRankings(txn *sql.Tx, years []int, limit int) ([]*SongRanking, error) {
+func SongRankings(txn *sql.Tx, years []int, limit int, requireSpotifyID bool) ([]*SongRanking, error) {
+	whereClause := ""
+	if requireSpotifyID {
+		whereClause = "WHERE song_spotify_id IS NOT NULL\n"
+	}
+
 	rows, err := txn.Query(`
 		WITH year_songs AS (
 			SELECT artist, title, s.spotify_id AS song_spotify_id
@@ -178,7 +183,9 @@ func SongRankings(txn *sql.Tx, years []int, limit int) ([]*SongRanking, error) {
 		)
 		SELECT artist, title, song_spotify_id, count(*)
 		FROM year_songs
-		GROUP BY artist, title, song_spotify_id
+		` +
+		whereClause +
+		`GROUP BY artist, title, song_spotify_id
 		ORDER BY count DESC
 		LIMIT $2`,
 		pq.Array(years),

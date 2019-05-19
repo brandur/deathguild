@@ -422,7 +422,7 @@ func renderStatisticsInTransaction(c *modulir.Context, txn *sql.Tx, viewsChanged
 		return err
 	}
 
-	songRankings, err := dgquery.SongRankings(txn, years, 15)
+	songRankings, err := dgquery.SongRankings(txn, years, 15, false)
 	if err != nil {
 		return err
 	}

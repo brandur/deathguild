@@ -3,12 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"os"
 
 	"github.com/brandur/deathguild/modules/dgcommon"
 	"github.com/brandur/deathguild/modules/dgquery"
 	"github.com/brandur/modulir"
 	"github.com/joeshaw/envdecode"
+	"github.com/pkg/errors"
 	_ "github.com/lib/pq"
 	"github.com/zmb3/spotify"
 )
@@ -72,14 +72,6 @@ func main() {
 		dgcommon.ExitWithError(err)
 	}
 
-	// Do one initial fetch out of the loop below just so that we can die very
-	// early (and without having to wait for the Spotify playlist cache to
-	// build) if we don't need to do any work.
-	playlists, err := playlistsNeedingID(txn, 1)
-	if err != nil {
-		dgcommon.ExitWithError(err)
-	}
-
 	playlistYears, err := dgquery.PlaylistYears(txn)
 	if err != nil {
 		dgcommon.ExitWithError(err)
@@ -91,10 +83,6 @@ func main() {
 	}
 
 	var pool *modulir.Pool
-
-	if len(playlists) == 0 {
-		goto done
-	}
 
 	pool = modulir.NewPool(log, poolConcurrency)
 	defer pool.Stop()
@@ -151,12 +139,12 @@ func main() {
 
 	// Per-day playlists
 	for {
-		done, exitCode, err := runLoop(pool)
+		done, err := runLoop(pool)
 		if err != nil {
-			dgcommon.ExitWithError(err)
+			log.Errorf("error from run loop: %v", err)
+			break
 		}
 		if done {
-			defer os.Exit(exitCode)
 			break
 		}
 	}
@@ -169,7 +157,6 @@ func main() {
 		dgcommon.ExitWithError(fmt.Errorf("%v job(s) errored occurred during last round",
 			len(pool.JobsErrored)))
 	}
-done:
 }
 
 func createPlaylist(name, description string) (spotify.ID, error) {
@@ -222,7 +209,7 @@ func createPlaylistForYear(years []int, name, description string) (bool, error) 
 		return false, err
 	}
 
-	songRankings, err := dgquery.SongRankings(txn, years, 50)
+	songRankings, err := dgquery.SongRankings(txn, years, 50, true)
 	if err != nil {
 		return false, err
 	}
@@ -271,10 +258,12 @@ func createPlaylistWithSongs(txn *sql.Tx, playlistMap map[string]spotify.ID,
 
 	err := client.ReplacePlaylistTracks(playlistID, songIDs...)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err,
+			"Error replacing tracks for playlist '%v' (spotify '%v')",
+			name, playlistID)
 	}
 
-	log.Debugf(`Updated playlist: "%v" (ID %v) with %v song(s)`,
+	log.Infof(`Updated playlist: "%v" (ID %v) with %v song(s)`,
 		name, playlistID, len(songIDs))
 	return playlistID, nil
 }
@@ -305,6 +294,8 @@ func getPlaylistMap() (map[string]spotify.ID, error) {
 		Limit:  &limit,
 		Offset: &offset,
 	}
+
+	log.Infof("Building playlist map")
 
 	for {
 		page, err := client.CurrentUsersPlaylistsOpt(opts)
@@ -368,10 +359,10 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*dgcommon.Playlist, error) {
 	return playlists, nil
 }
 
-func runLoop(pool *modulir.Pool) (bool, int, error) {
+func runLoop(pool *modulir.Pool) (bool, error) {
 	txn, err := db.Begin()
 	if err != nil {
-		return false, 0, err
+		return false, err
 	}
 	defer func() {
 		err := txn.Commit()
@@ -384,11 +375,11 @@ func runLoop(pool *modulir.Pool) (bool, int, error) {
 	// at once.
 	playlists, err := playlistsNeedingID(txn, 100)
 	if err != nil {
-		return false, 0, err
+		return false, err
 	}
 
 	if len(playlists) == 0 {
-		return true, 0, nil
+		return true, nil
 	}
 
 	for _, p := range playlists {
@@ -400,8 +391,8 @@ func runLoop(pool *modulir.Pool) (bool, int, error) {
 		})
 	}
 
-	log.Infof("Created %v Spotify playlist(s)", len(playlists))
-	return false, 0, nil
+	log.Infof("Queued creation of %v Spotify playlist(s)", len(playlists))
+	return false, nil
 }
 
 func updatePlaylist(txn *sql.Tx, playlist *dgcommon.Playlist) error {

@@ -19,8 +19,6 @@ make install
 # you'll need to fill in Spotify credentials here
 cp .envrc.sample .envrc
 
-export $(cat .env)
-
 # creates a database of all playlist/song information
 dg-scrape-playlists
 

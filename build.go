@@ -365,8 +365,9 @@ func renderPlaylistInTransaction(c *modulir.Context, txn *sql.Tx,
 		c.TargetDir+"/playlists/"+playlist.FormattedDay(),
 		viewsChanged,
 		map[string]interface{}{
-			"Playlist": playlist,
-			"Title":    "Playlist for " + playlist.FormattedDay(),
+			"Playlist":      playlist,
+			"Title":         "Playlist for " + playlist.FormattedDay(),
+			"ViewportWidth": "800",
 		},
 	)
 	if err != nil {
@@ -430,6 +431,7 @@ func renderStatisticsInTransaction(c *modulir.Context, txn *sql.Tx, viewsChanged
 		"ArtistRankingsByPlays": artistRankingsByPlays,
 		"ArtistRankingsBySongs": artistRankingsBySongs,
 		"SongRankings":          songRankings,
+		"ViewportWidth":         "800",
 	}
 	if len(years) == 1 {
 		locals["Header"] = years[0]
@@ -549,6 +551,7 @@ func renderTemplate(c *modulir.Context, view, target string, dynamicReload bool,
 		"GoogleAnalyticsID": conf.GoogleAnalyticsID,
 		"LocalFonts":        conf.LocalFonts,
 		"Release":           Release,
+		"ViewportWidth":     "device-width, initial-scale=1",
 	}
 
 	// Override our basic data map with anything that the specific page sent

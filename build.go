@@ -491,7 +491,7 @@ func playlistInfo(playlist *dgcommon.Playlist) string {
 	percent := float64(numWithSpotifyID) / float64(len(playlist.Songs)) * 100
 
 	return fmt.Sprintf("%v out of %v songs (%.1f%%) were found in Spotify.",
-		len(playlist.Songs), numWithSpotifyID, percent)
+		numWithSpotifyID, len(playlist.Songs), percent)
 }
 
 func spotifyPlaylistLink(playlist *dgcommon.Playlist) string {

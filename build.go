@@ -53,7 +53,7 @@ func build(c *modulir.Context) []error {
 
 	c.Log.Debugf("Running build loop")
 
-	versionedAssetsDir := path.Join(conf.TargetDir, "assets", dgcommon.Release)
+	versionedAssetsDir := path.Join(conf.TargetDir, "assets", Release)
 
 	// Open database connection and transaction
 	var db *sql.DB
@@ -730,7 +730,7 @@ func renderTemplate(c *modulir.Context, view, target string, dynamicReload bool,
 		"DGEnv":             conf.DGEnv,
 		"GoogleAnalyticsID": conf.GoogleAnalyticsID,
 		"LocalFonts":        conf.LocalFonts,
-		"Release":           dgcommon.Release,
+		"Release":           Release,
 	}
 
 	// Override our basic data map with anything that the specific page sent

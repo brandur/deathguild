@@ -84,7 +84,7 @@ func ArtistRankingsByPlays(txn *sql.Tx, years []int, limit int) ([]*ArtistRankin
 		SELECT artist, count(*)
 		FROM year_songs
 		GROUP BY artist
-		ORDER BY count DESC
+		ORDER BY count DESC, artist
 		LIMIT $2`,
 		pq.Array(years),
 		limit,
@@ -128,7 +128,7 @@ func ArtistRankingsBySongs(txn *sql.Tx, years []int, limit int) ([]*ArtistRankin
 		SELECT artist, count(distinct(title))
 		FROM year_songs
 		GROUP BY artist
-		ORDER BY count DESC
+		ORDER BY count DESC, artist
 		LIMIT $2`,
 		pq.Array(years),
 		limit,
@@ -186,7 +186,7 @@ func SongRankings(txn *sql.Tx, years []int, limit int, requireSpotifyID bool) ([
 		`+
 		whereClause+
 		`GROUP BY artist, title, song_spotify_id
-		ORDER BY count DESC
+		ORDER BY count DESC, artist, title
 		LIMIT $2`,
 		pq.Array(years),
 		limit,

@@ -25,6 +25,9 @@ const (
 	playlistYearDescriptionFormat = `A compliation playlist of the top songs played at Death Guild in %v. See: https://deathguild.brandur.org/statistics/%v.`
 )
 
+// Maximum number of playlists to try and handle in a single run.
+const maxPlaylists = 200
+
 // Concurrency level to run job pool at.
 const poolConcurrency = 30
 
@@ -138,14 +141,19 @@ func main() {
 	}
 
 	// Per-day playlists
-	for {
-		done, err := runLoop(pool)
+	{
+		playlists, err := getPlaylists(pool)
 		if err != nil {
-			log.Errorf("error from run loop: %v", err)
-			break
+			dgcommon.ExitWithError(err)
 		}
-		if done {
-			break
+
+		for _, p := range playlists {
+			playlist := p
+
+			name := fmt.Sprintf("playlist: %v", playlist.FormattedDay())
+			pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
+				return createPlaylistForDay(playlist)
+			})
 		}
 	}
 
@@ -332,7 +340,24 @@ func getPlaylistMap() (map[string]spotify.ID, error) {
 	return playlistMap, nil
 }
 
-func playlistsNeedingID(txn *sql.Tx, limit int) ([]*dgcommon.Playlist, error) {
+func getPlaylists(pool *modulir.Pool) ([]*dgcommon.Playlist, error) {
+	txn, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err := txn.Commit()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	// Do work in batches so we don't have to keep everything in memory
+	// at once.
+	return getPlaylistsInTransaction(txn, maxPlaylists)
+}
+
+func getPlaylistsInTransaction(txn *sql.Tx, limit int) ([]*dgcommon.Playlist, error) {
 	rows, err := txn.Query(`
 		SELECT id, day
 		FROM playlists
@@ -370,42 +395,6 @@ func playlistsNeedingID(txn *sql.Tx, limit int) ([]*dgcommon.Playlist, error) {
 
 	log.Infof("Found %v playlist(s) needing Spotify IDs", len(playlists))
 	return playlists, nil
-}
-
-func runLoop(pool *modulir.Pool) (bool, error) {
-	txn, err := db.Begin()
-	if err != nil {
-		return false, err
-	}
-	defer func() {
-		err := txn.Commit()
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	// Do work in batches so we don't have to keep everything in memory
-	// at once.
-	playlists, err := playlistsNeedingID(txn, 100)
-	if err != nil {
-		return false, err
-	}
-
-	if len(playlists) == 0 {
-		return true, nil
-	}
-
-	for _, p := range playlists {
-		playlist := p
-
-		name := fmt.Sprintf("playlist: %v", playlist.FormattedDay())
-		pool.Jobs <- modulir.NewJob(name, func() (bool, error) {
-			return createPlaylistForDay(playlist)
-		})
-	}
-
-	log.Infof("Queued creation of %v Spotify playlist(s)", len(playlists))
-	return false, nil
 }
 
 func updatePlaylist(txn *sql.Tx, playlist *dgcommon.Playlist) error {

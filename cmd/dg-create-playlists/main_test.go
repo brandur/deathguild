@@ -14,7 +14,7 @@ func init() {
 	db = dgtesting.DB
 }
 
-func TestPlaylistsNeedingID(t *testing.T) {
+func TestGetPlaylistsInTransaction(t *testing.T) {
 	txn, err := db.Begin()
 	assert.NoError(t, err)
 	defer func() {
@@ -31,7 +31,7 @@ func TestPlaylistsNeedingID(t *testing.T) {
 		dgtesting.InsertPlaylist(t, txn, playlist)
 	}
 
-	actualPlaylist, err := playlistsNeedingID(txn, 1000)
+	actualPlaylist, err := getPlaylistsInTransaction(txn, 1000)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(actualPlaylist))

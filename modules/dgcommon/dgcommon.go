@@ -37,6 +37,7 @@ func (p *Playlist) FetchSongs(txn *sql.Tx) error {
 		FROM playlists_songs ps
 		INNER JOIN songs s ON ps.songs_id = s.id
 		WHERE ps.playlists_id = $1
+			AND spotify_id IS NOT NULL
 		ORDER BY position`,
 		p.ID,
 	)

@@ -73,6 +73,7 @@ export TARGET_DIR=./public
 createdb $DATABASE_NAME
 mkdir -p $TARGET_DIR
 make database-fetch
+make database-decompress
 make database-restore
 ```
 

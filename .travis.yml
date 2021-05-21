@@ -54,8 +54,7 @@ script:
     make deploy-site
 
 notifications:
-  email:
-    on_success: never
+  email: false
 
 env:
   global:
